@@ -10,6 +10,26 @@ export type Client = {
   city: string | null;
   type: string | null;
   status: Statut;
+  // Champs détaillés (fiche client) — optionnels pour rester compatible
+  // avec d'anciennes données déjà enregistrées dans le navigateur.
+  segment?: Segment;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+};
+
+// Produit installé chez un client (osmoseur, adoucisseur, fontaine…).
+// Le prochain entretien est calculé automatiquement à partir de la date de
+// pose + la fréquence d'entretien (voir nextMaintenance).
+export type Installation = {
+  id: number;
+  client_id: number;
+  model: string;
+  serial: string | null;
+  installed_at: string | null; // date de pose (AAAA-MM-JJ)
+  warranty_months: number | null; // durée de garantie en mois
+  maintenance_months: number; // fréquence d'entretien en mois (12 par défaut)
 };
 
 export type Intervention = {
@@ -23,13 +43,21 @@ export type Intervention = {
 
 const K_CLIENTS = "lido-clients";
 const K_INTERV = "lido-interventions";
+const K_INSTALL = "lido-installations";
 
 const SEED_CLIENTS: Client[] = [
-  { id: 1, name: "Brasserie du Port", city: "Marseille", type: "Restaurant", status: "client" },
-  { id: 2, name: "Clinique Saint-Roch", city: "Montpellier", type: "Santé", status: "a_renouveler" },
-  { id: 3, name: "Hôtel Belvédère", city: "Nice", type: "Hôtel", status: "client" },
-  { id: 4, name: "Boulangerie Lemaire", city: "Aix-en-Provence", type: "Commerce", status: "prospect" },
-  { id: 5, name: "Camping Les Pins", city: "Fréjus", type: "Tourisme", status: "client" },
+  { id: 1, name: "Brasserie du Port", city: "Marseille", type: "Restaurant", status: "client", segment: "b2b", phone: "04 91 00 11 22", email: "contact@brasserie-port.fr", address: "12 quai du Port, 13002 Marseille", notes: "4 fontaines à eau en salle." },
+  { id: 2, name: "Clinique Saint-Roch", city: "Montpellier", type: "Santé", status: "a_renouveler", segment: "b2b", phone: "04 67 00 33 44", email: "technique@clinique-stroch.fr", address: "8 rue Saint-Roch, 34000 Montpellier", notes: "Contrat d'entretien à renouveler avant l'été." },
+  { id: 3, name: "Hôtel Belvédère", city: "Nice", type: "Hôtel", status: "client", segment: "b2b", phone: "04 93 00 55 66", email: "accueil@hotel-belvedere.fr", address: "25 promenade des Anglais, 06000 Nice", notes: null },
+  { id: 4, name: "Boulangerie Lemaire", city: "Aix-en-Provence", type: "Commerce", status: "prospect", segment: "b2b", phone: "04 42 00 77 88", email: null, address: "3 cours Mirabeau, 13100 Aix-en-Provence", notes: "Devis adoucisseur en cours." },
+  { id: 5, name: "Camping Les Pins", city: "Fréjus", type: "Tourisme", status: "client", segment: "b2b", phone: "04 94 00 99 00", email: "direction@camping-lespins.fr", address: "Route de Bagnols, 83600 Fréjus", notes: null },
+];
+
+const SEED_INSTALL: Installation[] = [
+  { id: 1, client_id: 1, model: "Osmoseur Aqua Pro 5", serial: "AP5-2024-0142", installed_at: "2025-06-05", warranty_months: 24, maintenance_months: 12 },
+  { id: 2, client_id: 1, model: "Fontaine réseau Fresh'In", serial: "FI-2025-0088", installed_at: "2025-09-12", warranty_months: 12, maintenance_months: 6 },
+  { id: 3, client_id: 2, model: "Adoucisseur Calc'Stop 30L", serial: "CS30-2023-0410", installed_at: "2023-05-18", warranty_months: 36, maintenance_months: 12 },
+  { id: 4, client_id: 3, model: "Osmoseur Aqua Pro 8", serial: "AP8-2025-0033", installed_at: "2025-11-02", warranty_months: 24, maintenance_months: 12 },
 ];
 
 const SEED_INTERV: Intervention[] = [
@@ -78,6 +106,20 @@ export function setClientStatus(id: number, status: Statut): Client[] {
   return rows;
 }
 
+// Met à jour les coordonnées / infos d'un client (fiche détaillée).
+export function updateClient(
+  id: number,
+  data: Partial<Omit<Client, "id">>
+): Client[] {
+  const rows = getClients().map((c) => (c.id === id ? { ...c, ...data } : c));
+  write(K_CLIENTS, rows);
+  return rows;
+}
+
+export function getClient(id: number): Client | undefined {
+  return getClients().find((c) => c.id === id);
+}
+
 export function removeClient(id: number): Client[] {
   const rows = getClients().filter((c) => c.id !== id);
   write(K_CLIENTS, rows);
@@ -114,6 +156,38 @@ export function removeIntervention(id: number): Intervention[] {
 export function clientName(clients: Client[], id: number | null): string {
   if (id === null) return "—";
   return clients.find((c) => c.id === id)?.name ?? "—";
+}
+
+// ---- Installations (produits installés chez le client) ----
+export function getInstallations(): Installation[] {
+  return read<Installation>(K_INSTALL, SEED_INSTALL);
+}
+
+export function getClientInstallations(clientId: number): Installation[] {
+  return getInstallations().filter((i) => i.client_id === clientId);
+}
+
+export function addInstallation(data: Omit<Installation, "id">): Installation[] {
+  const rows = getInstallations();
+  rows.push({ ...data, id: nextId(rows) });
+  write(K_INSTALL, rows);
+  return rows;
+}
+
+export function removeInstallation(id: number): Installation[] {
+  const rows = getInstallations().filter((i) => i.id !== id);
+  write(K_INSTALL, rows);
+  return rows;
+}
+
+// Calcule la date du prochain entretien : date de pose + fréquence (en mois).
+// Renvoie null si on ne connaît pas la date de pose.
+export function nextMaintenance(inst: Installation): string | null {
+  if (!inst.installed_at) return null;
+  const d = new Date(inst.installed_at);
+  if (isNaN(d.getTime())) return null;
+  d.setMonth(d.getMonth() + (inst.maintenance_months || 12));
+  return d.toISOString().slice(0, 10);
 }
 
 // ---- Opportunités (pipeline commercial) ----
