@@ -118,11 +118,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <div className="space-y-6 p-6">
-            <div className="rounded-xl border border-[#FCE2C7] bg-[#FFF8F0] px-4 py-3 text-sm text-[#B45309]">
-              <strong>Démo</strong> — les données sont réelles et enregistrées dans
-              la base, mais l&apos;app n&apos;a pas encore de connexion par compte.
-              Ne pas utiliser avec de vraies données clients tant que la sécurité
-              (login + RLS par entreprise) n&apos;est pas ajoutée.
+            <div className="rounded-xl border border-[#CDE9ED] bg-[#F0FBFC] px-4 py-3 text-sm text-[#0B7A87]">
+              <strong>Démonstration</strong> — tu peux ajouter, modifier et
+              supprimer des données : elles sont enregistrées <strong>dans ton
+              navigateur</strong>. La version production branchera la base
+              Supabase (avec connexion par compte) à cette même interface.
             </div>
             {children}
           </div>

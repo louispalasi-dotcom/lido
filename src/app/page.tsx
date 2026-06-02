@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
-import { supabase, type Client, type Intervention } from "@/lib/supabase";
+import {
+  getClients,
+  getInterventions,
+  clientName,
+  type Client,
+  type Intervention,
+} from "@/lib/store";
 
 function Kpi({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
@@ -19,35 +25,14 @@ function Dashboard() {
   const [clients, setClients] = useState<Client[]>([]);
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
-  const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const c = await supabase.from("clients").select("*").order("created_at", { ascending: false });
-      const i = await supabase
-        .from("interventions")
-        .select("*, clients(name)")
-        .order("scheduled_at", { ascending: true });
-      if (c.error || i.error) {
-        setErreur((c.error || i.error)!.message);
-      } else {
-        setClients(c.data as Client[]);
-        setInterventions(i.data as Intervention[]);
-      }
-      setLoading(false);
-    })();
+    setClients(getClients());
+    setInterventions(getInterventions());
+    setLoading(false);
   }, []);
 
   if (loading) return <p className="text-[#64748B]">Chargement…</p>;
-  if (erreur)
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        Impossible de lire la base : {erreur}
-        <div className="mt-1 text-red-500">
-          (As-tu bien exécuté le script SQL de création des tables ?)
-        </div>
-      </div>
-    );
 
   const nbClients = clients.filter((c) => c.status === "client").length;
   const nbProspects = clients.filter((c) => c.status === "prospect").length;
@@ -105,7 +90,7 @@ function Dashboard() {
                 .map((i) => (
                   <li key={i.id} className="flex justify-between border-b border-[#F0F2F6] pb-2">
                     <span className="font-medium">{i.type}</span>
-                    <span className="text-[#64748B]">{i.clients?.name ?? "—"}</span>
+                    <span className="text-[#64748B]">{clientName(clients, i.client_id)}</span>
                   </li>
                 ))}
             </ul>

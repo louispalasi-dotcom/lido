@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
-import { supabase, type Client, type Statut } from "@/lib/supabase";
+import {
+  getClients,
+  addClient,
+  setClientStatus,
+  removeClient,
+  type Client,
+  type Statut,
+} from "@/lib/store";
 
 const STATUTS: { val: Statut; label: string; classe: string }[] = [
   { val: "prospect", label: "Prospect", classe: "bg-[#EEF2F7] text-[#475569]" },
@@ -17,61 +24,42 @@ function badge(s: Statut) {
 function ClientsView() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [erreur, setErreur] = useState<string | null>(null);
   const [filtre, setFiltre] = useState<"tous" | Statut>("tous");
 
-  // Formulaire d'ajout
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [type, setType] = useState("");
   const [status, setStatus] = useState<Statut>("prospect");
-  const [envoi, setEnvoi] = useState(false);
-
-  async function charger() {
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) setErreur(error.message);
-    else setClients(data as Client[]);
-    setLoading(false);
-  }
 
   useEffect(() => {
-    charger();
+    setClients(getClients());
+    setLoading(false);
   }, []);
 
-  async function ajouter(e: React.FormEvent) {
+  function ajouter(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    setEnvoi(true);
-    const { error } = await supabase.from("clients").insert({
-      name: name.trim(),
-      city: city.trim() || null,
-      type: type.trim() || null,
-      status,
-    });
-    setEnvoi(false);
-    if (error) {
-      setErreur(error.message);
-      return;
-    }
+    setClients(
+      addClient({
+        name: name.trim(),
+        city: city.trim() || null,
+        type: type.trim() || null,
+        status,
+      })
+    );
     setName("");
     setCity("");
     setType("");
     setStatus("prospect");
-    charger();
   }
 
-  async function changerStatut(id: number, s: Statut) {
-    await supabase.from("clients").update({ status: s }).eq("id", id);
-    setClients((prev) => prev.map((c) => (c.id === id ? { ...c, status: s } : c)));
+  function changerStatut(id: number, s: Statut) {
+    setClients(setClientStatus(id, s));
   }
 
-  async function supprimer(id: number) {
+  function supprimer(id: number) {
     if (!confirm("Supprimer ce client ?")) return;
-    await supabase.from("clients").delete().eq("id", id);
-    setClients((prev) => prev.filter((c) => c.id !== id));
+    setClients(removeClient(id));
   }
 
   const liste = filtre === "tous" ? clients : clients.filter((c) => c.status === filtre);
@@ -80,7 +68,6 @@ function ClientsView() {
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">Clients & prospects</h2>
 
-      {/* Formulaire d'ajout */}
       <form
         onSubmit={ajouter}
         className="grid grid-cols-1 gap-3 rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-sm md:grid-cols-5"
@@ -117,24 +104,13 @@ function ClientsView() {
           </select>
           <button
             type="submit"
-            disabled={envoi}
-            className="rounded-lg bg-[#14B8C4] px-4 py-2 text-sm font-medium text-[#04212e] disabled:opacity-50"
+            className="rounded-lg bg-[#14B8C4] px-4 py-2 text-sm font-medium text-[#04212e]"
           >
-            {envoi ? "…" : "Ajouter"}
+            Ajouter
           </button>
         </div>
       </form>
 
-      {erreur && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {erreur}
-          <div className="mt-1 text-red-500">
-            (As-tu bien exécuté le script SQL de création des tables ?)
-          </div>
-        </div>
-      )}
-
-      {/* Filtres */}
       <div className="flex flex-wrap gap-2 text-sm">
         {(["tous", "prospect", "client", "a_renouveler"] as const).map((f) => (
           <button
@@ -149,7 +125,6 @@ function ClientsView() {
         ))}
       </div>
 
-      {/* Tableau */}
       <section className="overflow-hidden rounded-2xl border border-[#E6EAF0] bg-white shadow-sm">
         {loading ? (
           <p className="p-5 text-sm text-[#64748B]">Chargement…</p>

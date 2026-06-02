@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
-import { supabase, type Client, type Intervention } from "@/lib/supabase";
+import {
+  getClients,
+  getInterventions,
+  addIntervention,
+  setInterventionDone,
+  removeIntervention,
+  clientName,
+  type Client,
+  type Intervention,
+} from "@/lib/store";
 
 const TYPES = ["Installation", "Maintenance", "Dépannage", "Changement de filtre", "Contrôle qualité eau"];
 
@@ -10,63 +19,42 @@ function InterventionsView() {
   const [items, setItems] = useState<Intervention[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [erreur, setErreur] = useState<string | null>(null);
 
   const [clientId, setClientId] = useState<string>("");
   const [type, setType] = useState(TYPES[0]);
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [envoi, setEnvoi] = useState(false);
-
-  async function charger() {
-    const i = await supabase
-      .from("interventions")
-      .select("*, clients(name)")
-      .order("scheduled_at", { ascending: true });
-    const c = await supabase.from("clients").select("*").order("name");
-    if (i.error || c.error) setErreur((i.error || c.error)!.message);
-    else {
-      setItems(i.data as Intervention[]);
-      setClients(c.data as Client[]);
-    }
-    setLoading(false);
-  }
 
   useEffect(() => {
-    charger();
+    setItems(getInterventions());
+    setClients(getClients());
+    setLoading(false);
   }, []);
 
-  async function ajouter(e: React.FormEvent) {
+  function ajouter(e: React.FormEvent) {
     e.preventDefault();
-    setEnvoi(true);
-    const { error } = await supabase.from("interventions").insert({
-      client_id: clientId ? Number(clientId) : null,
-      type,
-      scheduled_at: date || null,
-      notes: notes.trim() || null,
-      status: "planifiee",
-    });
-    setEnvoi(false);
-    if (error) {
-      setErreur(error.message);
-      return;
-    }
+    setItems(
+      addIntervention({
+        client_id: clientId ? Number(clientId) : null,
+        type,
+        scheduled_at: date || null,
+        notes: notes.trim() || null,
+        status: "planifiee",
+      })
+    );
     setClientId("");
     setType(TYPES[0]);
     setDate("");
     setNotes("");
-    charger();
   }
 
-  async function marquerFaite(id: number) {
-    await supabase.from("interventions").update({ status: "faite" }).eq("id", id);
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status: "faite" } : i)));
+  function marquerFaite(id: number) {
+    setItems(setInterventionDone(id));
   }
 
-  async function supprimer(id: number) {
+  function supprimer(id: number) {
     if (!confirm("Supprimer cette intervention ?")) return;
-    await supabase.from("interventions").delete().eq("id", id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    setItems(removeIntervention(id));
   }
 
   return (
@@ -114,21 +102,11 @@ function InterventionsView() {
         />
         <button
           type="submit"
-          disabled={envoi}
-          className="rounded-lg bg-[#14B8C4] px-4 py-2 text-sm font-medium text-[#04212e] disabled:opacity-50"
+          className="rounded-lg bg-[#14B8C4] px-4 py-2 text-sm font-medium text-[#04212e]"
         >
-          {envoi ? "…" : "Planifier"}
+          Planifier
         </button>
       </form>
-
-      {erreur && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {erreur}
-          <div className="mt-1 text-red-500">
-            (As-tu bien exécuté le script SQL de création des tables ?)
-          </div>
-        </div>
-      )}
 
       <section className="overflow-hidden rounded-2xl border border-[#E6EAF0] bg-white shadow-sm">
         {loading ? (
@@ -152,7 +130,7 @@ function InterventionsView() {
               {items.map((i) => (
                 <tr key={i.id} className="border-t border-[#F0F2F6]">
                   <td className="px-5 py-3 font-medium">{i.type}</td>
-                  <td className="px-5 py-3 text-[#64748B]">{i.clients?.name ?? "—"}</td>
+                  <td className="px-5 py-3 text-[#64748B]">{clientName(clients, i.client_id)}</td>
                   <td className="px-5 py-3 text-[#64748B]">{i.scheduled_at ?? "—"}</td>
                   <td className="px-5 py-3">
                     {i.status === "faite" ? (
