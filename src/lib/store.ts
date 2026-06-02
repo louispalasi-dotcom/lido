@@ -183,3 +183,81 @@ export function removeOpportunity(id: number): Opportunity[] {
   write(K_OPP, rows);
   return rows;
 }
+
+// ---- Leads (contacts non qualifiés) ----
+export type LeadStatus =
+  | "nouveau"
+  | "contacte"
+  | "a_relancer"
+  | "qualifie"
+  | "converti"
+  | "perdu";
+
+export type Lead = {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  source: string | null;
+  segment: Segment;
+  status: LeadStatus;
+  notes: string | null;
+};
+
+export const LEAD_STATUTS: { val: LeadStatus; label: string; classe: string }[] = [
+  { val: "nouveau", label: "Nouveau", classe: "bg-[#EEF2F7] text-[#475569]" },
+  { val: "contacte", label: "Contacté", classe: "bg-[#E6EDF7] text-[#1D4ED8]" },
+  { val: "a_relancer", label: "À relancer", classe: "bg-[#FFF3E6] text-[#B45309]" },
+  { val: "qualifie", label: "Qualifié", classe: "bg-[#E6F7F9] text-[#0B7A87]" },
+  { val: "converti", label: "Converti", classe: "bg-[#E7F8EE] text-[#15803D]" },
+  { val: "perdu", label: "Perdu", classe: "bg-[#F3F4F6] text-[#9CA3AF]" },
+];
+
+const K_LEADS = "lido-leads";
+
+const SEED_LEADS: Lead[] = [
+  { id: 1, name: "Restaurant Le Phare", phone: "04 91 00 11 22", email: "contact@lephare.fr", source: "Salon pro", segment: "b2b", status: "nouveau", notes: null },
+  { id: 2, name: "Famille Morel", phone: "06 12 34 56 78", email: "morel@email.fr", source: "Site web", segment: "b2c", status: "contacte", notes: "Intéressée par un adoucisseur" },
+  { id: 3, name: "Garage Central", phone: "04 92 11 22 33", email: null, source: "Recommandation", segment: "b2b", status: "a_relancer", notes: null },
+  { id: 4, name: "M. et Mme Robin", phone: "06 98 76 54 32", email: "robin@email.fr", source: "Pub locale", segment: "b2c", status: "nouveau", notes: null },
+];
+
+export function getLeads(): Lead[] {
+  return read<Lead>(K_LEADS, SEED_LEADS);
+}
+
+export function addLead(data: Omit<Lead, "id">): Lead[] {
+  const rows = getLeads();
+  rows.unshift({ ...data, id: nextId(rows) });
+  write(K_LEADS, rows);
+  return rows;
+}
+
+export function setLeadStatus(id: number, status: LeadStatus): Lead[] {
+  const rows = getLeads().map((l) => (l.id === id ? { ...l, status } : l));
+  write(K_LEADS, rows);
+  return rows;
+}
+
+export function removeLead(id: number): Lead[] {
+  const rows = getLeads().filter((l) => l.id !== id);
+  write(K_LEADS, rows);
+  return rows;
+}
+
+// Convertit un lead en opportunité (alimente le pipeline) et marque le lead "converti".
+export function convertLeadToOpportunity(id: number): Lead[] {
+  const lead = getLeads().find((l) => l.id === id);
+  if (lead) {
+    addOpportunity({
+      title: lead.name,
+      segment: lead.segment,
+      amount: 0,
+      probability: 20,
+      expected_date: null,
+      stage: "nouveau",
+      owner: "—",
+    });
+  }
+  return setLeadStatus(id, "converti");
+}
