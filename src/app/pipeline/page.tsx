@@ -7,11 +7,16 @@ import {
   listOpportunities,
   createOpportunity,
   setOpportunityStage,
+  setOpportunityEtat,
   removeOpportunity,
+  etatOf,
+  stageForEtat,
+  ETATS,
   STAGES,
   type Opportunity,
   type Segment,
   type Stage,
+  type Etat,
 } from "@/lib/opportunities";
 
 function euros(n: number) {
@@ -73,6 +78,16 @@ function PipelineView() {
     setOpps((rows) => rows.map((o) => (o.id === id ? { ...o, stage } : o)));
     try {
       await setOpportunityStage(id, stage);
+    } catch {
+      charger();
+    }
+  }
+
+  async function changerEtat(o: Opportunity, etat: Etat) {
+    const stage = stageForEtat(etat, o.stage);
+    setOpps((rows) => rows.map((x) => (x.id === o.id ? { ...x, stage } : x)));
+    try {
+      await setOpportunityEtat(o, etat);
     } catch {
       charger();
     }
@@ -233,17 +248,20 @@ function PipelineView() {
                       className="mt-2 flex items-center justify-between"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <select
-                        value={o.stage}
-                        onChange={(e) => deplacer(o.id, e.target.value as Stage)}
-                        className="rounded-md border border-[#E6EAF0] px-1 py-0.5 text-[11px]"
-                      >
-                        {STAGES.map((s) => (
-                          <option key={s.val} value={s.val}>
-                            {s.label}
-                          </option>
-                        ))}
-                      </select>
+                      <label className="flex items-center gap-1 text-[11px] text-[#94A3B8]">
+                        État
+                        <select
+                          value={etatOf(o.stage)}
+                          onChange={(e) => changerEtat(o, e.target.value as Etat)}
+                          className="rounded-md border border-[#E6EAF0] px-1 py-0.5 text-[11px] text-[#0A2540]"
+                        >
+                          {ETATS.map((s) => (
+                            <option key={s.val} value={s.val}>
+                              {s.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <button
                         onClick={() => supprimer(o.id)}
                         className="text-[11px] text-[#94A3B8] hover:text-red-600"

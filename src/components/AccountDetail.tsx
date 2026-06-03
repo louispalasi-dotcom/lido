@@ -12,8 +12,12 @@ import {
 } from "@/lib/clients";
 import {
   listOpportunitiesByClient,
+  setOpportunityEtat,
+  etatOf,
+  ETATS,
   STAGES,
   type Opportunity,
+  type Etat,
 } from "@/lib/opportunities";
 import {
   listActivitiesByClient,
@@ -185,7 +189,7 @@ export default function AccountDetail({ clientId }: { clientId: number }) {
       {tab === "activites" && (
         <ActivitesTab clientId={client.id} activities={activities} onChange={charger} />
       )}
-      {tab === "opportunites" && <OpportunitesTab opps={opps} />}
+      {tab === "opportunites" && <OpportunitesTab opps={opps} onChange={charger} />}
       {tab === "pieces" && (
         <PiecesTab
           organizationId={client.organization_id}
@@ -329,7 +333,12 @@ function ActivitesTab({
 }
 
 // ---------- Onglet Opportunités ----------
-function OpportunitesTab({ opps }: { opps: Opportunity[] }) {
+function OpportunitesTab({ opps, onChange }: { opps: Opportunity[]; onChange: () => void }) {
+  async function changerEtat(o: Opportunity, etat: Etat) {
+    await setOpportunityEtat(o, etat);
+    onChange();
+  }
+
   if (opps.length === 0)
     return <p className="text-sm text-[#64748B]">Aucune opportunité liée à ce compte.</p>;
   return (
@@ -345,12 +354,21 @@ function OpportunitesTab({ opps }: { opps: Opportunity[] }) {
               {stageLabel(o.stage)} · {o.probability}% · {o.expected_date ?? "sans date"}
             </p>
           </div>
-          <div className="text-right">
+          <div className="flex items-center gap-3">
             <div className="text-sm font-semibold text-[#0A2540]">{euros(o.amount)}</div>
-            {o.stage === "signe" && (
-              <span className="text-xs font-medium text-[#15803D]">gagné</span>
-            )}
-            {o.stage === "perdu" && <span className="text-xs text-[#94A3B8]">perdu</span>}
+            <select
+              value={etatOf(o.stage)}
+              onChange={(e) => changerEtat(o, e.target.value as Etat)}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                ETATS.find((x) => x.val === etatOf(o.stage))?.classe ?? ""
+              }`}
+            >
+              {ETATS.map((s) => (
+                <option key={s.val} value={s.val}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       ))}

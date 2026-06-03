@@ -15,6 +15,7 @@ import {
   type Client,
   type ClientStatus,
 } from "@/lib/clients";
+import { listOpportunities } from "@/lib/opportunities";
 
 function euros(n: number) {
   return (n || 0).toLocaleString("fr-FR") + " €";
@@ -29,13 +30,19 @@ function segBadge(seg: "b2b" | "b2c") {
 function ClientsList() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
+  const [wonIds, setWonIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtre, setFiltre] = useState<"tous" | ClientStatus>("tous");
 
   const charger = useCallback(async () => {
     try {
-      setClients(await listClients());
+      const [cls, opps] = await Promise.all([listClients(), listOpportunities()]);
+      setClients(cls);
+      // Un compte est "client" dès qu'il a au moins une opportunité gagnée (Signé).
+      setWonIds(
+        new Set(opps.filter((o) => o.stage === "signe" && o.client_id).map((o) => o.client_id as number))
+      );
       setError(null);
     } catch {
       setError("Impossible de charger les comptes clients depuis Supabase.");
@@ -73,15 +80,17 @@ function ClientsList() {
     }
   }
 
-  const liste = filtre === "tous" ? clients : clients.filter((c) => c.status === filtre);
+  const gagnes = clients.filter((c) => wonIds.has(c.id));
+  const liste = filtre === "tous" ? gagnes : gagnes.filter((c) => c.status === filtre);
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Comptes clients</h2>
+      <h2 className="text-lg font-semibold">Clients</h2>
 
       <p className="rounded-xl border border-[#CDE9ED] bg-[#F0FBFC] px-4 py-3 text-sm text-[#0B7A87]">
-        Les comptes sont créés à la <strong>conversion d&apos;un lead</strong>. Clique sur une ligne
-        pour ouvrir la <strong>fiche 360</strong> (activités, opportunités, pièces jointes…).
+        Ici, les comptes ayant au moins une <strong>affaire gagnée</strong>. Les prospects en cours
+        sont accessibles depuis le <strong>Pipeline</strong> (clique une opportunité). Clique une
+        ligne pour ouvrir la <strong>fiche 360</strong>.
       </p>
 
       {error && (
@@ -109,7 +118,8 @@ function ClientsList() {
           <p className="p-5 text-sm text-[#64748B]">Chargement…</p>
         ) : liste.length === 0 ? (
           <p className="p-5 text-sm text-[#64748B]">
-            Aucun compte. Convertis un lead depuis la page Leads pour créer le premier 👆
+            Aucun client gagné pour l&apos;instant. Marque une opportunité comme «&nbsp;gagné&nbsp;»
+            dans le Pipeline pour activer son compte ici 👆
           </p>
         ) : (
           <table className="w-full min-w-[640px] text-left text-sm">

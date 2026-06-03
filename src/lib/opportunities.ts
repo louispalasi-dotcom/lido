@@ -1,6 +1,7 @@
 // Accès aux opportunités dans Supabase (rattachées à un compte client).
 // Table protégée par RLS "connecté uniquement".
 import { supabase } from "./supabase";
+import { updateClient } from "./clients";
 
 export type Segment = "b2b" | "b2c";
 export type Temperature = "chaud" | "tiede" | "froid";
@@ -94,6 +95,40 @@ export async function createOpportunity(data: NewOpportunity): Promise<Opportuni
 export async function setOpportunityStage(id: number, stage: Stage): Promise<void> {
   const { error } = await supabase.from("opportunities").update({ stage }).eq("id", id);
   if (error) throw error;
+}
+
+// ---- État de haut niveau, réconcilié avec les étapes du pipeline ----
+// gagné = étape "Signé" · perdu = étape "Perdu" · en cours = toute autre étape.
+export type Etat = "en_cours" | "gagne" | "perdu";
+
+export const ETATS: { val: Etat; label: string; classe: string }[] = [
+  { val: "en_cours", label: "En cours", classe: "bg-[#EEF2F7] text-[#475569]" },
+  { val: "gagne", label: "Gagné", classe: "bg-[#E7F8EE] text-[#15803D]" },
+  { val: "perdu", label: "Perdu", classe: "bg-[#F3F4F6] text-[#9CA3AF]" },
+];
+
+export function etatOf(stage: Stage): Etat {
+  if (stage === "signe") return "gagne";
+  if (stage === "perdu") return "perdu";
+  return "en_cours";
+}
+
+// Étape cible quand on change l'état. "En cours" depuis un état terminal
+// (signé/perdu) ramène l'opportunité en Négociation.
+export function stageForEtat(etat: Etat, currentStage: Stage): Stage {
+  if (etat === "gagne") return "signe";
+  if (etat === "perdu") return "perdu";
+  if (currentStage === "signe" || currentStage === "perdu") return "negociation";
+  return currentStage;
+}
+
+// Change l'état d'une opportunité ; quand elle passe "gagné", le compte lié est
+// activé (statut "client") et apparaît alors dans l'onglet Clients.
+export async function setOpportunityEtat(opp: Opportunity, etat: Etat): Promise<void> {
+  await setOpportunityStage(opp.id, stageForEtat(etat, opp.stage));
+  if (etat === "gagne" && opp.client_id) {
+    await updateClient(opp.client_id, { status: "client" });
+  }
 }
 
 export async function removeOpportunity(id: number): Promise<void> {
