@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import {
   listStockItems,
   listPartsCatalogue,
+  updateStockItem,
   stockEtat,
   STOCK_ETAT_META,
   euros,
@@ -32,6 +33,15 @@ function StockView() {
   useEffect(() => {
     charger();
   }, [charger]);
+
+  function majLocal(id: number, field: "prix_vente_ht" | "cout_ht", value: string) {
+    const num = value === "" ? null : Number(value);
+    setItems((rows) => rows.map((i) => (i.id === id ? { ...i, [field]: num } : i)));
+  }
+  async function sauver(id: number, field: "prix_vente_ht" | "cout_ht", value: string) {
+    const num = value === "" ? null : Number(value);
+    await updateStockItem(id, { [field]: num });
+  }
 
   const counts = { ok: 0, faible: 0, rupture: 0 } as Record<StockEtat, number>;
   items.forEach((i) => (counts[stockEtat(i)] += 1));
@@ -83,6 +93,7 @@ function StockView() {
                 <th className="px-5 py-3 font-medium">En stock</th>
                 <th className="px-5 py-3 font-medium">Seuil</th>
                 <th className="px-5 py-3 font-medium">Prix HT</th>
+                <th className="px-5 py-3 font-medium">Coût HT</th>
                 <th className="px-5 py-3 font-medium">État</th>
               </tr>
             </thead>
@@ -95,8 +106,25 @@ function StockView() {
                     <td className="px-5 py-3 font-medium text-[#0A2540]">{i.nom}</td>
                     <td className="px-5 py-3 font-semibold text-[#0A2540]">{i.quantite_en_stock}</td>
                     <td className="px-5 py-3 text-[#94A3B8]">{i.seuil_alerte}</td>
-                    <td className="px-5 py-3 text-[#64748B]">
-                      {i.prix_vente_ht != null ? euros(i.prix_vente_ht) : "—"}
+                    <td className="px-5 py-3">
+                      <input
+                        type="number"
+                        className="w-20 rounded-lg border border-[#E6EAF0] px-2 py-1 text-right text-sm"
+                        placeholder="—"
+                        value={i.prix_vente_ht ?? ""}
+                        onChange={(e) => majLocal(i.id, "prix_vente_ht", e.target.value)}
+                        onBlur={(e) => sauver(i.id, "prix_vente_ht", e.target.value)}
+                      />
+                    </td>
+                    <td className="px-5 py-3">
+                      <input
+                        type="number"
+                        className="w-20 rounded-lg border border-[#E6EAF0] px-2 py-1 text-right text-sm"
+                        placeholder="—"
+                        value={i.cout_ht ?? ""}
+                        onChange={(e) => majLocal(i.id, "cout_ht", e.target.value)}
+                        onBlur={(e) => sauver(i.id, "cout_ht", e.target.value)}
+                      />
                     </td>
                     <td className="px-5 py-3">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${meta.classe}`}>

@@ -22,6 +22,9 @@ function nowLocal() {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+function euros(n: number) {
+  return Math.round(n || 0).toLocaleString("fr-FR") + " €";
+}
 
 export default function EntretienDrawer({
   client,
@@ -38,6 +41,7 @@ export default function EntretienDrawer({
 
   const [occurredAt, setOccurredAt] = useState(nowLocal());
   const [kind, setKind] = useState<MaintenanceKind>("annuel_sav");
+  const [standard, setStandard] = useState("");
   const [notes, setNotes] = useState("");
   const [lignes, setLignes] = useState<Ligne[]>([]);
   const [saving, setSaving] = useState(false);
@@ -47,10 +51,21 @@ export default function EntretienDrawer({
     if (!client) return;
     setOccurredAt(nowLocal());
     setKind("annuel_sav");
+    setStandard(localStorage.getItem("lido-entretien-standard") ?? "");
     setNotes("");
     setLignes([]);
     setError(null);
   }, [client]);
+
+  function changeStandard(v: string) {
+    setStandard(v);
+    localStorage.setItem("lido-entretien-standard", v);
+  }
+
+  const totalSupplement = lignes
+    .filter((l) => l.billing === "supplement")
+    .reduce((s, l) => s + (Number(l.amount) || 0) * (Number(l.qty) || 0), 0);
+  const totalFacture = (Number(standard) || 0) + totalSupplement;
 
   function ajouterLigne() {
     setLignes((r) => [...r, { stock_item_id: "", qty: 1, billing: "sav", amount: "" }]);
@@ -85,6 +100,7 @@ export default function EntretienDrawer({
         occurred_at: new Date(occurredAt).toISOString(),
         kind,
         notes: notes.trim() || null,
+        standard_amount: Number(standard) || 0,
         lines,
       });
       onSaved();
@@ -142,12 +158,22 @@ export default function EntretienDrawer({
             </div>
           </div>
 
-          {kind === "annuel_sav" && (
-            <p className="rounded-lg bg-[#F0FBFC] px-3 py-2 text-xs text-[#0B7A87]">
-              Client sous SAV → entretien facturé au <strong>tarif standard</strong> (montant à venir).
-              Les pièces marquées « supplément » sont facturables en plus.
+          <div>
+            <label className={labelCls}>Tarif standard d&apos;entretien (€)</label>
+            <input
+              type="number"
+              className={inputCls}
+              value={standard}
+              onChange={(e) => changeStandard(e.target.value)}
+              placeholder="ex. 150"
+            />
+            <p className="mt-1 text-[11px] text-[#94A3B8]">
+              {kind === "annuel_sav"
+                ? "Client sous SAV : facturé au tarif standard + pièces en supplément."
+                : "Saisis le tarif si applicable."}{" "}
+              Mémorisé pour les prochains entretiens.
             </p>
-          )}
+          </div>
 
           {/* Éléments changés */}
           <div>
@@ -229,6 +255,22 @@ export default function EntretienDrawer({
             <p className="mt-2 text-xs text-[#94A3B8]">
               Chaque élément changé décrémentera le stock à la validation.
             </p>
+          </div>
+
+          {/* Facture calculée */}
+          <div className="rounded-xl border border-[#E6EAF0] bg-[#F8FAFC] p-3 text-sm">
+            <div className="flex justify-between text-[#64748B]">
+              <span>Tarif standard</span>
+              <span>{euros(Number(standard) || 0)}</span>
+            </div>
+            <div className="flex justify-between text-[#64748B]">
+              <span>Pièces en supplément</span>
+              <span>{euros(totalSupplement)}</span>
+            </div>
+            <div className="mt-1 flex justify-between border-t border-[#E6EAF0] pt-1 font-semibold text-[#0A2540]">
+              <span>Total facture</span>
+              <span>{euros(totalFacture)}</span>
+            </div>
           </div>
 
           <textarea

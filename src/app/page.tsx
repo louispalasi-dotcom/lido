@@ -130,11 +130,17 @@ function Dashboard() {
               %
             </label>
           </div>
-          <div className="mt-2 text-3xl font-semibold text-[#15803D]">{euros(commissionGagnee)}</div>
-          <div className="text-xs text-[#94A3B8]">déjà gagnée</div>
-          <div className="mt-2 border-t border-[#F0F2F6] pt-2 text-sm">
-            <span className="font-medium text-[#0A2540]">{euros(commissionPotentielle)}</span>{" "}
-            <span className="text-xs text-[#94A3B8]">potentielle (en cours)</span>
+          <div className="mt-2 space-y-2">
+            <div>
+              <div className="text-2xl font-semibold text-[#0A2540]">{euros(commissionPotentielle)}</div>
+              <div className="text-xs text-[#94A3B8]">
+                potentielle ({rate}% × {ouvertes.length} opp. en cours)
+              </div>
+            </div>
+            <div className="border-t border-[#F0F2F6] pt-2">
+              <div className="text-lg font-semibold text-[#15803D]">{euros(commissionGagnee)}</div>
+              <div className="text-xs text-[#94A3B8]">déjà gagnée (sur affaires gagnées)</div>
+            </div>
           </div>
         </div>
 

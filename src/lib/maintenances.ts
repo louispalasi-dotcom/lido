@@ -24,8 +24,17 @@ export type Maintenance = {
   occurred_at: string;
   kind: MaintenanceKind;
   notes: string | null;
+  standard_amount: number;
   lines: MaintenanceLine[];
 };
+
+// Total facturé : tarif standard + pièces en supplément (quantité × prix unitaire).
+export function maintenanceTotal(m: { standard_amount: number; lines: MaintenanceLine[] }): number {
+  const supp = (m.lines || [])
+    .filter((l) => l.billing === "supplement")
+    .reduce((s, l) => s + (l.amount ?? 0) * (l.qty || 0), 0);
+  return (m.standard_amount || 0) + supp;
+}
 
 export const MAINTENANCE_KINDS: { val: MaintenanceKind; label: string }[] = [
   { val: "annuel_sav", label: "Entretien annuel (sous SAV)" },
@@ -51,6 +60,7 @@ export async function recordMaintenance(params: {
   occurred_at: string;
   kind: MaintenanceKind;
   notes: string | null;
+  standard_amount: number;
   lines: MaintenanceLine[];
 }): Promise<number> {
   const { data, error } = await supabase.rpc("record_maintenance", {
@@ -58,6 +68,7 @@ export async function recordMaintenance(params: {
     p_occurred_at: params.occurred_at,
     p_kind: params.kind,
     p_notes: params.notes,
+    p_standard_amount: params.standard_amount,
     p_lines: params.lines,
   });
   if (error) throw error;

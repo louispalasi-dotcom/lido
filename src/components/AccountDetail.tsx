@@ -55,6 +55,7 @@ import { listStockItems, type StockItem } from "@/lib/stock";
 import {
   listMaintenancesByClient,
   kindLabel,
+  maintenanceTotal,
   type Maintenance,
 } from "@/lib/maintenances";
 import {
@@ -355,14 +356,8 @@ function ActivitesTab({
     <div className="space-y-5">
       {/* Entretiens */}
       <div className="rounded-2xl border border-[#E6EAF0] bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3">
           <h3 className="font-semibold text-[#0A2540]">Entretiens</h3>
-          <button
-            onClick={() => setEntretienOpen(true)}
-            className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0c3358]"
-          >
-            + Entretien
-          </button>
         </div>
         {maintenances.length === 0 ? (
           <p className="text-sm text-[#64748B]">Aucun entretien enregistré pour ce client.</p>
@@ -398,6 +393,9 @@ function ActivitesTab({
                 ) : (
                   <p className="mt-1 text-xs text-[#94A3B8]">Aucun élément changé.</p>
                 )}
+                <p className="mt-2 text-xs font-medium text-[#0A2540]">
+                  Total facturé : {euros(maintenanceTotal(m))}
+                </p>
                 {m.notes && <p className="mt-1 text-xs text-[#64748B]">{m.notes}</p>}
               </li>
             ))}
@@ -421,6 +419,12 @@ function ActivitesTab({
               {t.icon} {t.label}
             </button>
           ))}
+          <button
+            onClick={() => setEntretienOpen(true)}
+            className="rounded-lg border border-[#E6EAF0] px-3 py-1.5 text-sm text-[#64748B] hover:bg-[#F8FAFC]"
+          >
+            🔧 Entretien
+          </button>
         </div>
         <textarea
           className="w-full rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm"

@@ -10,6 +10,7 @@ export type StockItem = {
   quantite_en_stock: number;
   seuil_alerte: number;
   prix_vente_ht: number | null;
+  cout_ht: number | null;
 };
 
 export type PartPrice = {
@@ -44,6 +45,14 @@ export async function listStockItems(): Promise<StockItem[]> {
     .order("nom", { ascending: true });
   if (error) throw error;
   return (data ?? []) as StockItem[];
+}
+
+export async function updateStockItem(
+  id: number,
+  data: Partial<Pick<StockItem, "prix_vente_ht" | "cout_ht" | "seuil_alerte" | "quantite_en_stock">>
+): Promise<void> {
+  const { error } = await supabase.from("stock_items").update(data).eq("id", id);
+  if (error) throw error;
 }
 
 export async function listPartsCatalogue(): Promise<PartPrice[]> {
