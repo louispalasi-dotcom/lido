@@ -7,6 +7,11 @@ import AppShell from "@/components/AppShell";
 import { listOpportunities, type Opportunity } from "@/lib/opportunities";
 import { listLeads, type Lead } from "@/lib/leads";
 import { listRdv, type RdvWithClient } from "@/lib/activities";
+import {
+  listInstallations,
+  etatEntretien,
+  type InstallationWithClient,
+} from "@/lib/installations";
 
 function euros(n: number) {
   return Math.round(n || 0).toLocaleString("fr-FR") + " €";
@@ -15,15 +20,12 @@ function pct(n: number) {
   return Math.round(n) + " %";
 }
 
-// Données de DÉMONSTRATION pour l'entretien des fontaines (le vrai module
-// Entretiens/Installations n'existe pas encore — voir le badge "Démo").
-const ENTRETIEN_DEMO = { aLheure: 15, aSurveiller: 6, enRetard: 3 };
-
 function Dashboard() {
   const router = useRouter();
   const [opps, setOpps] = useState<Opportunity[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [rdvs, setRdvs] = useState<RdvWithClient[]>([]);
+  const [installs, setInstalls] = useState<InstallationWithClient[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Taux de commission paramétrable (mémorisé dans le navigateur).
@@ -31,10 +33,16 @@ function Dashboard() {
 
   const charger = useCallback(async () => {
     try {
-      const [o, l, r] = await Promise.all([listOpportunities(), listLeads(), listRdv()]);
+      const [o, l, r, ins] = await Promise.all([
+        listOpportunities(),
+        listLeads(),
+        listRdv(),
+        listInstallations(),
+      ]);
       setOpps(o);
       setLeads(l);
       setRdvs(r);
+      setInstalls(ins);
     } finally {
       setLoading(false);
     }
@@ -70,8 +78,14 @@ function Dashboard() {
     : 0;
   const tauxVictoire = opps.length ? (gagnees.length / opps.length) * 100 : 0;
 
-  // Entretien (démo)
-  const e = ENTRETIEN_DEMO;
+  // Entretien (données réelles des installations)
+  const e = { aLheure: 0, aSurveiller: 0, enRetard: 0 };
+  installs.forEach((i) => {
+    const et = etatEntretien(i);
+    if (et === "a_jour") e.aLheure += 1;
+    else if (et === "a_surveiller") e.aSurveiller += 1;
+    else e.enRetard += 1;
+  });
   const totalEntretien = e.aLheure + e.aSurveiller + e.enRetard;
   const sante = totalEntretien ? (e.aLheure / totalEntretien) * 100 : 0;
   const santeCouleur = sante >= 80 ? "#15803D" : sante >= 50 ? "#B45309" : "#B91C1C";
@@ -144,9 +158,9 @@ function Dashboard() {
       <section className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-semibold text-[#0A2540]">État de l&apos;entretien des fontaines</h3>
-          <span className="rounded-full bg-[#FEF3C7] px-2.5 py-0.5 text-xs font-medium text-[#92400E]">
-            Données démo
-          </span>
+          <Link href="/entretiens" className="text-sm font-medium text-[#0B7A87] hover:underline">
+            Entretiens →
+          </Link>
         </div>
 
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -164,14 +178,17 @@ function Dashboard() {
         </div>
 
         {/* Barre empilée */}
-        <div className="mt-4 flex h-3 overflow-hidden rounded-full">
-          <div style={{ width: `${(e.aLheure / totalEntretien) * 100}%`, background: "#15803D" }} />
-          <div style={{ width: `${(e.aSurveiller / totalEntretien) * 100}%`, background: "#F59E0B" }} />
-          <div style={{ width: `${(e.enRetard / totalEntretien) * 100}%`, background: "#EF4444" }} />
+        <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-[#F1F5F9]">
+          {totalEntretien > 0 && (
+            <>
+              <div style={{ width: `${(e.aLheure / totalEntretien) * 100}%`, background: "#15803D" }} />
+              <div style={{ width: `${(e.aSurveiller / totalEntretien) * 100}%`, background: "#F59E0B" }} />
+              <div style={{ width: `${(e.enRetard / totalEntretien) * 100}%`, background: "#EF4444" }} />
+            </>
+          )}
         </div>
         <p className="mt-3 text-xs text-[#94A3B8]">
-          Widget de démonstration — il sera branché sur le vrai module Entretiens / Installations
-          (échéances calculées depuis les poses) quand on le construira.
+          Échéances calculées automatiquement depuis les poses et les derniers entretiens.
         </p>
       </section>
 

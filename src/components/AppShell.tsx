@@ -28,6 +28,7 @@ const MODULES: {
   { nom: "Leads", href: "/leads", roles: ["dirigeant", "commercial"] },
   { nom: "Clients", href: "/clients", roles: ["dirigeant", "commercial"] },
   { nom: "Interventions", href: "/interventions", roles: ["dirigeant", "technicien"] },
+  { nom: "Entretiens", href: "/entretiens", roles: ["dirigeant", "technicien"] },
   { nom: "Carte commerciale", roles: ["dirigeant", "commercial"] },
   { nom: "Pipeline", href: "/pipeline", roles: ["dirigeant", "commercial"] },
   { nom: "Calendrier", href: "/calendrier", roles: ["dirigeant", "commercial", "technicien"] },

@@ -37,6 +37,17 @@ import {
   type DocRow,
 } from "@/lib/documents";
 import OpportunityDrawer from "@/components/OpportunityDrawer";
+import {
+  listInstallationsByClient,
+  createInstallation,
+  markMaintained,
+  removeInstallation,
+  nextDue,
+  etatEntretien,
+  fmtDate,
+  ETAT_ENTRETIEN,
+  type Installation,
+} from "@/lib/installations";
 
 function euros(n: number) {
   return (n || 0).toLocaleString("fr-FR") + " €";
@@ -81,6 +92,7 @@ export default function AccountDetail({
   const [opps, setOpps] = useState<Opportunity[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [docs, setDocs] = useState<DocRow[]>([]);
+  const [installs, setInstalls] = useState<Installation[]>([]);
   const [oppDrawer, setOppDrawer] = useState(false);
 
   const charger = useCallback(async () => {
@@ -91,14 +103,16 @@ export default function AccountDetail({
         return;
       }
       setClient(c);
-      const [o, a, d] = await Promise.all([
+      const [o, a, d, ins] = await Promise.all([
         listOpportunitiesByClient(clientId),
         listActivitiesByClient(clientId),
         listDocumentsByClient(clientId),
+        listInstallationsByClient(clientId),
       ]);
       setOpps(o);
       setActivities(a);
       setDocs(d);
+      setInstalls(ins);
       setError(null);
     } catch {
       setError("Erreur de chargement depuis Supabase.");
@@ -230,7 +244,7 @@ export default function AccountDetail({
         <Placeholder titre="Devis & Factures" texte="Ce module arrive bientôt : génération de devis et de factures rattachés au compte." />
       )}
       {tab === "installations" && (
-        <Placeholder titre="Installations" texte="Ce module arrive bientôt : produits installés, numéros de série, garanties et prochains entretiens." />
+        <InstallationsTab clientId={client.id} installs={installs} onChange={charger} />
       )}
 
       <OpportunityDrawer
@@ -493,6 +507,166 @@ function PiecesTab({
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ---------- Onglet Installations ----------
+function InstallationsTab({
+  clientId,
+  installs,
+  onChange,
+}: {
+  clientId: number;
+  installs: Installation[];
+  onChange: () => void;
+}) {
+  const [model, setModel] = useState("");
+  const [serial, setSerial] = useState("");
+  const [installedAt, setInstalledAt] = useState("");
+  const [warranty, setWarranty] = useState("24");
+  const [freq, setFreq] = useState("12");
+  const [saving, setSaving] = useState(false);
+
+  async function ajouter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!model.trim()) return;
+    setSaving(true);
+    try {
+      await createInstallation({
+        client_id: clientId,
+        model: model.trim(),
+        serial: serial.trim() || null,
+        installed_at: installedAt || null,
+        warranty_months: warranty ? Number(warranty) : null,
+        maintenance_months: freq ? Number(freq) : 12,
+      });
+      setModel("");
+      setSerial("");
+      setInstalledAt("");
+      setWarranty("24");
+      setFreq("12");
+      onChange();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function entretenu(id: number) {
+    await markMaintained(id, new Date().toISOString().slice(0, 10));
+    onChange();
+  }
+
+  async function retirer(id: number) {
+    if (!confirm("Retirer ce produit installé ?")) return;
+    await removeInstallation(id);
+    onChange();
+  }
+
+  return (
+    <div className="space-y-5">
+      {installs.length === 0 ? (
+        <p className="text-sm text-[#64748B]">Aucun produit installé pour ce compte.</p>
+      ) : (
+        <ul className="space-y-3">
+          {installs.map((i) => {
+            const et = etatEntretien(i);
+            const meta = ETAT_ENTRETIEN[et];
+            return (
+              <li key={i.id} className="rounded-xl border border-[#F0F2F6] p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-[#0A2540]">{i.model}</p>
+                    <p className="text-xs text-[#94A3B8]">
+                      {i.serial ? `N° ${i.serial} · ` : ""}Posé le {fmtDate(i.installed_at)}
+                      {i.warranty_months ? ` · garantie ${i.warranty_months} mois` : ""}
+                    </p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${meta.classe}`}>
+                    <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+                    {meta.label}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-[#64748B]">
+                    Prochain entretien : <strong className="text-[#0A2540]">{fmtDate(nextDue(i))}</strong>
+                    {i.last_maintenance_at && ` · dernier le ${fmtDate(i.last_maintenance_at)}`}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => entretenu(i.id)}
+                      className="text-xs font-medium text-[#0B7A87] hover:underline"
+                    >
+                      Marquer entretenu
+                    </button>
+                    <button
+                      onClick={() => retirer(i.id)}
+                      className="text-xs text-[#94A3B8] hover:text-red-600"
+                    >
+                      Retirer
+                    </button>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <form onSubmit={ajouter} className="space-y-2 rounded-2xl border border-[#E6EAF0] bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
+          Ajouter un produit installé
+        </p>
+        <input
+          className="w-full rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm"
+          placeholder="Modèle * (ex. Osmoseur Aqua Pro 5)"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            className="rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm"
+            placeholder="N° de série"
+            value={serial}
+            onChange={(e) => setSerial(e.target.value)}
+          />
+          <input
+            type="date"
+            className="rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm"
+            value={installedAt}
+            onChange={(e) => setInstalledAt(e.target.value)}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex items-center gap-2 text-xs text-[#64748B]">
+            Garantie
+            <input
+              type="number"
+              className="w-full rounded-lg border border-[#E6EAF0] px-2 py-2 text-sm"
+              value={warranty}
+              onChange={(e) => setWarranty(e.target.value)}
+            />
+            mois
+          </label>
+          <label className="flex items-center gap-2 text-xs text-[#64748B]">
+            Entretien tous les
+            <input
+              type="number"
+              className="w-full rounded-lg border border-[#E6EAF0] px-2 py-2 text-sm"
+              value={freq}
+              onChange={(e) => setFreq(e.target.value)}
+            />
+            mois
+          </label>
+        </div>
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-[#14B8C4] px-4 py-2 text-sm font-medium text-[#04212e] disabled:opacity-60"
+        >
+          Ajouter le produit
+        </button>
+      </form>
     </div>
   );
 }
