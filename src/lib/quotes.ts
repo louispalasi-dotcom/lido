@@ -4,7 +4,12 @@ import { supabase } from "./supabase";
 
 export type QuoteStatus = "brouillon" | "envoye" | "accepte" | "refuse";
 
-export type QuoteLine = { label: string; qty: number; unit_price: number };
+export type QuoteLine = {
+  label: string;
+  qty: number;
+  unit_price: number;
+  stock_item_id?: number | null;
+};
 
 export type Quote = {
   id: number;
@@ -19,6 +24,8 @@ export type Quote = {
   valid_until: string | null;
   lines: QuoteLine[];
   total: number;
+  tva_rate: number;
+  remise_pct: number;
 };
 
 export type QuoteWithClient = Quote & {
@@ -51,6 +58,16 @@ export function lineTotal(l: QuoteLine) {
 
 export function computeTotal(lines: QuoteLine[]) {
   return lines.reduce((s, l) => s + lineTotal(l), 0);
+}
+
+// Sous-total HT → remise → TVA → TTC.
+export function computeQuoteTotals(lines: QuoteLine[], tvaRate: number, remisePct: number) {
+  const subtotal = computeTotal(lines);
+  const remise = subtotal * ((remisePct || 0) / 100);
+  const ht = subtotal - remise;
+  const tva = ht * ((tvaRate || 0) / 100);
+  const ttc = ht + tva;
+  return { subtotal, remise, ht, tva, ttc };
 }
 
 export function euros(n: number) {
@@ -90,9 +107,28 @@ export async function createQuote(data: {
   return row as Quote;
 }
 
+export async function getQuote(id: number): Promise<Quote | null> {
+  const { data, error } = await supabase.from("quotes").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data as Quote) ?? null;
+}
+
 export async function updateQuote(
   id: number,
-  data: Partial<Pick<Quote, "status" | "title" | "notes" | "issue_date" | "valid_until" | "lines" | "total">>
+  data: Partial<
+    Pick<
+      Quote,
+      | "status"
+      | "title"
+      | "notes"
+      | "issue_date"
+      | "valid_until"
+      | "lines"
+      | "total"
+      | "tva_rate"
+      | "remise_pct"
+    >
+  >
 ): Promise<void> {
   const { error } = await supabase.from("quotes").update(data).eq("id", id);
   if (error) throw error;

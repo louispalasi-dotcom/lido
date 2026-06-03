@@ -260,7 +260,9 @@ export default function AccountDetail({
       {tab === "activites" && (
         <ActivitesTab client={client} activities={activities} onChange={charger} />
       )}
-      {tab === "opportunites" && <OpportunitesTab opps={opps} onChange={charger} />}
+      {tab === "opportunites" && (
+        <OpportunitesTab client={client} opps={opps} onChange={charger} />
+      )}
       {tab === "pieces" && (
         <PiecesTab
           organizationId={client.organization_id}
@@ -515,17 +517,34 @@ function EntretienAttachments({
 }
 
 // ---------- Onglet Opportunités ----------
-function OpportunitesTab({ opps, onChange }: { opps: Opportunity[]; onChange: () => void }) {
+function OpportunitesTab({
+  client,
+  opps,
+  onChange,
+}: {
+  client: Client;
+  opps: Opportunity[];
+  onChange: () => void;
+}) {
+  const [devis, setDevis] = useState<Quote | null>(null);
+
   async function changerEtat(o: Opportunity, etat: Etat) {
     await setOpportunityEtat(o, etat);
     onChange();
+  }
+
+  async function nouveauDevis(o: Opportunity) {
+    const q = await createQuote({ client_id: client.id, opportunity_id: o.id });
+    setDevis(q);
   }
 
   if (opps.length === 0)
     return <p className="text-sm text-[#64748B]">Aucune opportunité liée à ce compte.</p>;
   return (
     <div className="space-y-3">
-      {opps.map((o) => (
+      {opps.map((o) => {
+        const enCours = o.stage !== "signe" && o.stage !== "perdu";
+        return (
         <div
           key={o.id}
           className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E6EAF0] bg-white p-4 shadow-sm"
@@ -542,7 +561,7 @@ function OpportunitesTab({ opps, onChange }: { opps: Opportunity[]; onChange: ()
               <p className="text-xs text-[#64748B]">Contexte eau : {o.water_context}</p>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="text-sm font-semibold text-[#0A2540]">{euros(o.amount)}</div>
             <select
               value={etatOf(o.stage)}
@@ -557,9 +576,20 @@ function OpportunitesTab({ opps, onChange }: { opps: Opportunity[]; onChange: ()
                 </option>
               ))}
             </select>
+            {enCours && (
+              <button
+                onClick={() => nouveauDevis(o)}
+                className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0c3358]"
+              >
+                Nouveau devis
+              </button>
+            )}
           </div>
         </div>
-      ))}
+        );
+      })}
+
+      <QuoteDrawer quote={devis} onClose={() => setDevis(null)} onSaved={onChange} />
     </div>
   );
 }
