@@ -50,6 +50,13 @@ import {
   type Installation,
 } from "@/lib/installations";
 import QuoteDrawer from "@/components/QuoteDrawer";
+import EntretienDrawer from "@/components/EntretienDrawer";
+import { listStockItems, type StockItem } from "@/lib/stock";
+import {
+  listMaintenancesByClient,
+  kindLabel,
+  type Maintenance,
+} from "@/lib/maintenances";
 import {
   listQuotesByClient,
   createQuote,
@@ -249,7 +256,7 @@ export default function AccountDetail({
       </div>
 
       {tab === "activites" && (
-        <ActivitesTab clientId={client.id} activities={activities} onChange={charger} />
+        <ActivitesTab client={client} activities={activities} onChange={charger} />
       )}
       {tab === "opportunites" && <OpportunitesTab opps={opps} onChange={charger} />}
       {tab === "pieces" && (
@@ -294,18 +301,32 @@ function Info({ label, value }: { label: string; value: string | null }) {
 
 // ---------- Onglet Activités ----------
 function ActivitesTab({
-  clientId,
+  client,
   activities,
   onChange,
 }: {
-  clientId: number;
+  client: Client;
   activities: Activity[];
   onChange: () => void;
 }) {
+  const clientId = client.id;
   const [type, setType] = useState<ActivityType>("appel");
   const [content, setContent] = useState("");
   const [when, setWhen] = useState("");
   const [saving, setSaving] = useState(false);
+  const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [entretienOpen, setEntretienOpen] = useState(false);
+
+  const chargerEntretiens = useCallback(async () => {
+    const [m, s] = await Promise.all([listMaintenancesByClient(clientId), listStockItems()]);
+    setMaintenances(m);
+    setStockItems(s);
+  }, [clientId]);
+
+  useEffect(() => {
+    chargerEntretiens();
+  }, [chargerEntretiens]);
 
   async function enregistrer() {
     if (!content.trim() && type !== "rdv") return;
@@ -332,6 +353,58 @@ function ActivitesTab({
 
   return (
     <div className="space-y-5">
+      {/* Entretiens */}
+      <div className="rounded-2xl border border-[#E6EAF0] bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-semibold text-[#0A2540]">Entretiens</h3>
+          <button
+            onClick={() => setEntretienOpen(true)}
+            className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0c3358]"
+          >
+            + Entretien
+          </button>
+        </div>
+        {maintenances.length === 0 ? (
+          <p className="text-sm text-[#64748B]">Aucun entretien enregistré pour ce client.</p>
+        ) : (
+          <ul className="space-y-3">
+            {maintenances.map((m) => (
+              <li key={m.id} className="rounded-xl border border-[#F0F2F6] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-[#0A2540]">{kindLabel(m.kind)}</span>
+                  <span className="text-xs text-[#94A3B8]">{fmtDateTime(m.occurred_at)}</span>
+                </div>
+                {m.lines && m.lines.length > 0 ? (
+                  <ul className="mt-2 space-y-1">
+                    {m.lines.map((l, i) => (
+                      <li key={i} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[#0A2540]">
+                          {l.qty} × {l.nom}
+                        </span>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 font-medium ${
+                            l.billing === "supplement"
+                              ? "bg-[#FFF3E6] text-[#B45309]"
+                              : "bg-[#E7F8EE] text-[#15803D]"
+                          }`}
+                        >
+                          {l.billing === "supplement"
+                            ? `Supplément · ${l.amount != null ? l.amount + " €" : "à venir"}`
+                            : "Inclus SAV"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-xs text-[#94A3B8]">Aucun élément changé.</p>
+                )}
+                {m.notes && <p className="mt-1 text-xs text-[#64748B]">{m.notes}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Composer */}
       <div className="space-y-3 rounded-2xl border border-[#E6EAF0] bg-white p-4 shadow-sm">
         <div className="flex flex-wrap gap-2">
@@ -403,6 +476,13 @@ function ActivitesTab({
           })}
         </ol>
       )}
+
+      <EntretienDrawer
+        client={entretienOpen ? client : null}
+        stockItems={stockItems}
+        onClose={() => setEntretienOpen(false)}
+        onSaved={chargerEntretiens}
+      />
     </div>
   );
 }
