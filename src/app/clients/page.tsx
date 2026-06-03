@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
+import AccountDetail from "@/components/AccountDetail";
 import {
   listClients,
   updateClient,
@@ -24,7 +26,8 @@ function segBadge(seg: "b2b" | "b2c") {
     : { label: "B2C", classe: "bg-[#E6F7F9] text-[#0B7A87]" };
 }
 
-function ClientsView() {
+function ClientsList() {
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +47,10 @@ function ClientsView() {
   useEffect(() => {
     charger();
   }, [charger]);
+
+  function ouvrir(id: number) {
+    router.push(`/clients?compte=${id}`);
+  }
 
   async function changerStatut(id: number, s: ClientStatus) {
     setClients((rows) => rows.map((c) => (c.id === id ? { ...c, status: s } : c)));
@@ -73,9 +80,8 @@ function ClientsView() {
       <h2 className="text-lg font-semibold">Comptes clients</h2>
 
       <p className="rounded-xl border border-[#CDE9ED] bg-[#F0FBFC] px-4 py-3 text-sm text-[#0B7A87]">
-        Les comptes sont créés automatiquement à la <strong>conversion d&apos;un lead</strong>
-        {" "}(page Leads). La <strong>fiche 360 détaillée</strong> (onglets activités, opportunités,
-        documents…) arrive à la prochaine sous-étape.
+        Les comptes sont créés à la <strong>conversion d&apos;un lead</strong>. Clique sur une ligne
+        pour ouvrir la <strong>fiche 360</strong> (activités, opportunités, pièces jointes…).
       </p>
 
       {error && (
@@ -106,7 +112,7 @@ function ClientsView() {
             Aucun compte. Convertis un lead depuis la page Leads pour créer le premier 👆
           </p>
         ) : (
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="text-xs uppercase text-[#94A3B8]">
               <tr>
                 <th className="px-5 py-3 font-medium">Compte</th>
@@ -123,7 +129,11 @@ function ClientsView() {
                 const sb = segBadge(c.segment);
                 const temp = temperatureInfo(c.temperature);
                 return (
-                  <tr key={c.id} className="border-t border-[#F0F2F6]">
+                  <tr
+                    key={c.id}
+                    onClick={() => ouvrir(c.id)}
+                    className="cursor-pointer border-t border-[#F0F2F6] hover:bg-[#F8FAFC]"
+                  >
                     <td className="px-5 py-3 font-medium text-[#0A2540]">
                       {clientDisplayName(c)}
                       {c.city && <span className="block text-xs text-[#94A3B8]">{c.city}</span>}
@@ -145,7 +155,7 @@ function ClientsView() {
                     </td>
                     <td className="px-5 py-3 text-[#0A2540]">{euros(c.estimated_value)}</td>
                     <td className="px-5 py-3 text-[#64748B]">{c.sales_rep ?? "—"}</td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={c.status}
                         onChange={(e) => changerStatut(c.id, e.target.value as ClientStatus)}
@@ -158,7 +168,7 @@ function ClientsView() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => supprimer(c.id)}
                         className="text-xs text-[#94A3B8] hover:text-red-600"
@@ -177,10 +187,20 @@ function ClientsView() {
   );
 }
 
+// Aiguillage : ?compte=ID → fiche 360, sinon la liste.
+function ClientsRouter() {
+  const params = useSearchParams();
+  const compte = params.get("compte");
+  if (compte) return <AccountDetail clientId={Number(compte)} />;
+  return <ClientsList />;
+}
+
 export default function Page() {
   return (
     <AppShell>
-      <ClientsView />
+      <Suspense fallback={<p className="text-sm text-[#64748B]">Chargement…</p>}>
+        <ClientsRouter />
+      </Suspense>
     </AppShell>
   );
 }

@@ -9,6 +9,7 @@ export type Temperature = "chaud" | "tiede" | "froid";
 export type Client = {
   id: number;
   created_at: string;
+  organization_id: number;
   segment: Segment;
   status: ClientStatus;
   company_name: string | null;
@@ -32,7 +33,10 @@ export type Client = {
   source_lead_id: number | null;
 };
 
-export type NewClient = Omit<Client, "id" | "created_at" | "estimated_value" | "quote_value" | "status"> & {
+export type NewClient = Omit<
+  Client,
+  "id" | "created_at" | "organization_id" | "estimated_value" | "quote_value" | "status"
+> & {
   status?: ClientStatus;
   estimated_value?: number;
   quote_value?: number;

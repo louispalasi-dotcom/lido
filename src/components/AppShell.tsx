@@ -42,6 +42,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>("dirigeant");
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
 
   // Récupère le rôle choisi (mémorisé dans le navigateur).
   useEffect(() => {
@@ -80,92 +81,130 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const visibles = MODULES.filter((m) => m.roles.includes(role));
 
+  // Liste de navigation, réutilisée pour le menu fixe (desktop) et le menu
+  // déroulant (mobile). onNavigate sert à refermer le menu mobile au clic.
+  function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+    return (
+      <nav className="mt-2 flex flex-col gap-1 px-3">
+        {visibles.map((m) => {
+          const actif = m.href === pathname;
+          if (!m.href) {
+            return (
+              <span
+                key={m.nom}
+                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-500"
+              >
+                {m.nom}
+                <span className="text-[10px] uppercase">à venir</span>
+              </span>
+            );
+          }
+          return (
+            <Link
+              key={m.nom}
+              href={m.href}
+              onClick={onNavigate}
+              className={`rounded-lg px-3 py-2 text-sm ${
+                actif
+                  ? "bg-[#14B8C4] font-medium text-[#04212e]"
+                  : "text-slate-300 hover:bg-white/5"
+              }`}
+            >
+              {m.nom}
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  }
+
   return (
     <RoleContext.Provider value={role}>
       <div className="flex min-h-screen w-full bg-[#F6F8FB] text-[#0A2540]">
-        {/* Barre latérale */}
-        <aside className="hidden md:flex w-60 flex-col bg-[#0A2540] text-white">
+        {/* Barre latérale fixe (desktop) */}
+        <aside className="hidden w-60 flex-col bg-[#0A2540] text-white md:flex">
           <div className="flex items-center gap-2 px-6 py-5 text-xl font-semibold">
             <span className="text-[#14B8C4]">💧</span> Lido
           </div>
-          <nav className="mt-2 flex flex-col gap-1 px-3">
-            {visibles.map((m) => {
-              const actif = m.href === pathname;
-              if (!m.href) {
-                return (
-                  <span
-                    key={m.nom}
-                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-500"
-                  >
-                    {m.nom}
-                    <span className="text-[10px] uppercase">à venir</span>
-                  </span>
-                );
-              }
-              return (
-                <Link
-                  key={m.nom}
-                  href={m.href}
-                  className={`rounded-lg px-3 py-2 text-sm ${
-                    actif
-                      ? "bg-[#14B8C4] font-medium text-[#04212e]"
-                      : "text-slate-300 hover:bg-white/5"
-                  }`}
-                >
-                  {m.nom}
-                </Link>
-              );
-            })}
-          </nav>
+          <NavLinks />
           <div className="mt-auto px-6 py-4 text-xs text-slate-400">
-            Filtration & traitement de l&apos;eau
+            Filtration &amp; traitement de l&apos;eau
           </div>
         </aside>
 
-        {/* Contenu */}
-        <main className="flex-1">
-          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6EAF0] bg-white px-6 py-4">
-            <div>
-              <h1 className="text-xl font-semibold">Lido</h1>
-              <p className="text-sm text-[#64748B]">
-                Filtration & traitement de l&apos;eau · CRM
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                <span className="text-[#64748B]">Vue :</span>
-                <select
-                  value={role}
-                  onChange={(e) => changeRole(e.target.value as Role)}
-                  className="rounded-lg border border-[#E6EAF0] bg-white px-3 py-1.5 font-medium"
-                >
-                  {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABEL[r]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="flex items-center gap-2 border-l border-[#E6EAF0] pl-3 text-sm">
-                <span className="hidden text-[#94A3B8] sm:inline">{session.user.email}</span>
+        {/* Menu mobile (burger) */}
+        {mobileNav && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setMobileNav(false)}
+            />
+            <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-[#0A2540] text-white shadow-xl">
+              <div className="flex items-center justify-between px-5 py-5 text-xl font-semibold">
+                <span>
+                  <span className="text-[#14B8C4]">💧</span> Lido
+                </span>
                 <button
-                  onClick={() => supabase.auth.signOut()}
-                  className="rounded-lg border border-[#E6EAF0] px-3 py-1.5 text-[#64748B] hover:bg-[#F8FAFC]"
+                  onClick={() => setMobileNav(false)}
+                  className="rounded-lg px-2 py-1 text-slate-300 hover:bg-white/10"
+                  aria-label="Fermer le menu"
                 >
-                  Se déconnecter
+                  ✕
                 </button>
+              </div>
+              <NavLinks onNavigate={() => setMobileNav(false)} />
+            </aside>
+          </div>
+        )}
+
+        {/* Contenu */}
+        <main className="min-w-0 flex-1">
+          <header className="border-b border-[#E6EAF0] bg-white">
+            <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setMobileNav(true)}
+                  className="rounded-lg border border-[#E6EAF0] px-2.5 py-1.5 text-lg leading-none md:hidden"
+                  aria-label="Ouvrir le menu"
+                >
+                  ☰
+                </button>
+                <div>
+                  <h1 className="text-lg font-semibold sm:text-xl">Lido</h1>
+                  <p className="hidden text-sm text-[#64748B] sm:block">
+                    Filtration &amp; traitement de l&apos;eau · CRM
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <span className="hidden text-[#64748B] sm:inline">Vue :</span>
+                  <select
+                    value={role}
+                    onChange={(e) => changeRole(e.target.value as Role)}
+                    className="rounded-lg border border-[#E6EAF0] bg-white px-2 py-1.5 text-sm font-medium"
+                  >
+                    {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+                      <option key={r} value={r}>
+                        {ROLE_LABEL[r]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="flex items-center gap-2 border-l border-[#E6EAF0] pl-2 text-sm sm:pl-3">
+                  <span className="hidden text-[#94A3B8] lg:inline">{session.user.email}</span>
+                  <button
+                    onClick={() => supabase.auth.signOut()}
+                    className="rounded-lg border border-[#E6EAF0] px-3 py-1.5 text-[#64748B] hover:bg-[#F8FAFC]"
+                  >
+                    Déconnexion
+                  </button>
+                </div>
               </div>
             </div>
           </header>
 
-          <div className="space-y-6 p-6">
-            <div className="rounded-xl border border-[#CDE9ED] bg-[#F0FBFC] px-4 py-3 text-sm text-[#0B7A87]">
-              <strong>Tu es connecté.</strong> Les <strong>leads</strong> sont
-              désormais enregistrés dans la <strong>vraie base Supabase</strong>{" "}
-              (protégée par ta connexion). Les autres modules (clients, pipeline,
-              interventions) restent en démo locale pour l&apos;instant — ils
-              basculeront sur Supabase au fur et à mesure.
-            </div>
+          <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-5 sm:px-6 sm:py-6">
             {children}
           </div>
         </main>

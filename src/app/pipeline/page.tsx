@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import {
   listOpportunities,
@@ -24,6 +25,7 @@ function segBadge(s: Segment) {
 }
 
 function PipelineView() {
+  const router = useRouter();
   const [opps, setOpps] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [survol, setSurvol] = useState<Stage | null>(null);
@@ -204,7 +206,11 @@ function PipelineView() {
                     key={o.id}
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData("text/plain", String(o.id))}
-                    className="cursor-grab rounded-xl border border-[#E6EAF0] bg-white p-3 shadow-sm active:cursor-grabbing"
+                    onClick={() => {
+                      if (o.client_id) router.push(`/clients?compte=${o.client_id}`);
+                    }}
+                    title={o.client_id ? "Ouvrir le compte" : "Aucun compte lié"}
+                    className="cursor-pointer rounded-xl border border-[#E6EAF0] bg-white p-3 shadow-sm hover:border-[#14B8C4]"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-sm font-medium leading-tight">{o.title}</span>
@@ -223,7 +229,10 @@ function PipelineView() {
                     <div className="mt-1 text-xs text-[#94A3B8]">
                       {o.owner} · {o.expected_date ?? "—"}
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
+                    <div
+                      className="mt-2 flex items-center justify-between"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <select
                         value={o.stage}
                         onChange={(e) => deplacer(o.id, e.target.value as Stage)}
