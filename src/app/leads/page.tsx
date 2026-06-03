@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import LeadDrawer from "@/components/LeadDrawer";
+import ConvertLeadDrawer from "@/components/ConvertLeadDrawer";
 import {
   listLeads,
   updateLeadStatus,
@@ -14,7 +15,6 @@ import {
   type Lead,
   type LeadStatus,
 } from "@/lib/leads";
-import { createOpportunity } from "@/lib/opportunities";
 
 function LeadsView() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -22,6 +22,7 @@ function LeadsView() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [convertLead, setConvertLead] = useState<Lead | null>(null);
 
   const charger = useCallback(async () => {
     try {
@@ -46,22 +47,6 @@ function LeadsView() {
       setError("La modification du statut a échoué.");
       charger();
     }
-  }
-
-  async function convertir(lead: Lead) {
-    // Le lead passe en "converti" dans Supabase ; l'opportunité est créée dans
-    // le pipeline (encore en démo locale pour l'instant).
-    await changerStatut(lead.id, "converti");
-    await createOpportunity({
-      title: leadDisplayName(lead),
-      segment: lead.segment,
-      amount: 0,
-      probability: 20,
-      expected_date: null,
-      stage: "nouveau",
-      owner: lead.sales_rep || "—",
-    });
-    setInfo(`« ${leadDisplayName(lead)} » a été converti en opportunité → visible dans le Pipeline.`);
   }
 
   async function supprimer(id: number) {
@@ -168,7 +153,7 @@ function LeadsView() {
                     <div className="flex items-center gap-3">
                       {l.status !== "converti" ? (
                         <button
-                          onClick={() => convertir(l)}
+                          onClick={() => setConvertLead(l)}
                           className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0c3358]"
                         >
                           Convertir en opportunité
@@ -196,6 +181,15 @@ function LeadsView() {
         onClose={() => setDrawerOpen(false)}
         onSaved={() => {
           setInfo("Nouveau lead enregistré dans Supabase ✅");
+          charger();
+        }}
+      />
+
+      <ConvertLeadDrawer
+        lead={convertLead}
+        onClose={() => setConvertLead(null)}
+        onConverted={(name) => {
+          setInfo(`« ${name} » converti : compte client créé + opportunité ajoutée au Pipeline ✅`);
           charger();
         }}
       />
