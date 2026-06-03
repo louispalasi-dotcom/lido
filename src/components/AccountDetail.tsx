@@ -37,6 +37,7 @@ import {
   type DocRow,
 } from "@/lib/documents";
 import OpportunityDrawer from "@/components/OpportunityDrawer";
+import ClientEditDrawer from "@/components/ClientEditDrawer";
 import {
   listInstallationsByClient,
   createInstallation,
@@ -104,6 +105,7 @@ export default function AccountDetail({
   const [docs, setDocs] = useState<DocRow[]>([]);
   const [installs, setInstalls] = useState<Installation[]>([]);
   const [oppDrawer, setOppDrawer] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const charger = useCallback(async () => {
     try {
@@ -203,12 +205,20 @@ export default function AccountDetail({
               <div className="text-lg font-semibold text-[#0A2540]">{euros(client.estimated_value)}</div>
               <div className="text-xs text-[#94A3B8]">Devis : {euros(client.quote_value)}</div>
             </div>
-            <button
-              onClick={() => setOppDrawer(true)}
-              className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0c3358]"
-            >
-              + Nouvelle opportunité
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditOpen(true)}
+                className="rounded-lg border border-[#E6EAF0] px-3 py-1.5 text-xs font-medium text-[#64748B] hover:bg-[#F8FAFC]"
+              >
+                Modifier
+              </button>
+              <button
+                onClick={() => setOppDrawer(true)}
+                className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0c3358]"
+              >
+                + Nouvelle opportunité
+              </button>
+            </div>
           </div>
         </div>
 
@@ -262,6 +272,12 @@ export default function AccountDetail({
           setTab("opportunites");
           charger();
         }}
+      />
+
+      <ClientEditDrawer
+        client={editOpen ? client : null}
+        onClose={() => setEditOpen(false)}
+        onSaved={charger}
       />
     </div>
   );
@@ -407,11 +423,17 @@ function OpportunitesTab({ opps, onChange }: { opps: Opportunity[]; onChange: ()
           key={o.id}
           className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E6EAF0] bg-white p-4 shadow-sm"
         >
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-[#0A2540]">{o.title}</p>
             <p className="text-xs text-[#94A3B8]">
-              {stageLabel(o.stage)} · {o.probability}% · {o.expected_date ?? "sans date"}
+              {stageLabel(o.stage)} · {o.probability}% · échéance {o.expected_date ?? "—"}
             </p>
+            {o.current_solution && (
+              <p className="text-xs text-[#64748B]">Solution actuelle : {o.current_solution}</p>
+            )}
+            {o.water_context && (
+              <p className="text-xs text-[#64748B]">Contexte eau : {o.water_context}</p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm font-semibold text-[#0A2540]">{euros(o.amount)}</div>

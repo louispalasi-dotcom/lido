@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createOpportunity, STAGES, type Stage } from "@/lib/opportunities";
+import { createOpportunity, defaultExpectedDate, STAGES, type Stage } from "@/lib/opportunities";
 import {
   clientDisplayName,
   TEMPERATURES,
@@ -43,6 +43,7 @@ export default function OpportunityDrawer({
   const [owner, setOwner] = useState("");
   const [temperature, setTemperature] = useState<Temperature>("tiede");
   const [waterContext, setWaterContext] = useState("");
+  const [currentSolution, setCurrentSolution] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,11 +53,12 @@ export default function OpportunityDrawer({
     setAmount("");
     setQuoteValue("");
     setProbability("50");
-    setExpectedDate("");
+    setExpectedDate(defaultExpectedDate());
     setStage("nouveau");
     setOwner(account.sales_rep || "");
     setTemperature(account.temperature || "tiede");
     setWaterContext("");
+    setCurrentSolution("");
     setError(null);
   }, [account]);
 
@@ -75,6 +77,7 @@ export default function OpportunityDrawer({
         stage,
         owner: owner.trim() || account.sales_rep || "—",
         water_context: waterContext.trim() || null,
+        current_solution: currentSolution.trim() || null,
         quote_value: Number(quoteValue) || 0,
         temperature,
       });
@@ -211,6 +214,15 @@ export default function OpportunityDrawer({
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className={labelCls}>Solution actuelle</label>
+              <input
+                className={inputCls}
+                value={currentSolution}
+                onChange={(e) => setCurrentSolution(e.target.value)}
+                placeholder="Ex. robinet, bouteille (Mont Roucous), carafe filtrante…"
+              />
             </div>
             <div>
               <label className={labelCls}>Contexte eau</label>

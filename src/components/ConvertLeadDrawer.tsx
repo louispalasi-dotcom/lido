@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient, type NewClient, type Temperature } from "@/lib/clients";
-import { createOpportunity, STAGES, type Stage } from "@/lib/opportunities";
+import { createOpportunity, defaultExpectedDate, STAGES, type Stage } from "@/lib/opportunities";
 import { updateLeadStatus, leadDisplayName, type Lead } from "@/lib/leads";
 import { TEMPERATURES } from "@/lib/clients";
 
@@ -41,6 +41,7 @@ export default function ConvertLeadDrawer({
   const [owner, setOwner] = useState("");
   const [temperature, setTemperature] = useState<Temperature>("tiede");
   const [waterContext, setWaterContext] = useState("");
+  const [currentSolution, setCurrentSolution] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,11 +53,12 @@ export default function ConvertLeadDrawer({
     setAmount("");
     setQuoteValue("");
     setProbability("50");
-    setExpectedDate("");
+    setExpectedDate(defaultExpectedDate());
     setStage("nouveau");
     setOwner(lead.sales_rep || "");
     setTemperature("tiede");
     setWaterContext("");
+    setCurrentSolution("");
     setError(null);
   }, [lead]);
 
@@ -102,6 +104,7 @@ export default function ConvertLeadDrawer({
         stage,
         owner: owner.trim() || lead.sales_rep || "—",
         water_context: waterContext.trim() || null,
+        current_solution: currentSolution.trim() || null,
         quote_value: Number(quoteValue) || 0,
         temperature,
       });
@@ -245,6 +248,15 @@ export default function ConvertLeadDrawer({
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className={labelCls}>Solution actuelle</label>
+              <input
+                className={inputCls}
+                value={currentSolution}
+                onChange={(e) => setCurrentSolution(e.target.value)}
+                placeholder="Ex. robinet, bouteille (Mont Roucous), carafe filtrante…"
+              />
             </div>
             <div>
               <label className={labelCls}>Contexte eau</label>

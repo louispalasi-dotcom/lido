@@ -11,6 +11,7 @@ import {
   removeOpportunity,
   etatOf,
   stageForEtat,
+  defaultExpectedDate,
   ETATS,
   STAGES,
   type Opportunity,
@@ -62,7 +63,7 @@ function PipelineView() {
       segment,
       amount: Number(amount) || 0,
       probability: Number(probability) || 0,
-      expected_date: date || null,
+      expected_date: date || defaultExpectedDate(),
       stage: "nouveau",
       owner: owner.trim() || "—",
     });

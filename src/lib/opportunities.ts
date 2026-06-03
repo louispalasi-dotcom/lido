@@ -30,6 +30,7 @@ export type Opportunity = {
   water_context: string | null;
   quote_value: number;
   temperature: Temperature | null;
+  current_solution: string | null;
 };
 
 export type NewOpportunity = {
@@ -44,7 +45,15 @@ export type NewOpportunity = {
   water_context?: string | null;
   quote_value?: number;
   temperature?: Temperature | null;
+  current_solution?: string | null;
 };
+
+// Date prévisionnelle par défaut : aujourd'hui + 2 mois (échéance de l'opportunité).
+export function defaultExpectedDate(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 2);
+  return d.toISOString().slice(0, 10);
+}
 
 export const STAGES: { val: Stage; label: string }[] = [
   { val: "nouveau", label: "Nouveau" },
