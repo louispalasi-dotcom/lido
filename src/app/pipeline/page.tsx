@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import {
-  getOpportunities,
-  addOpportunity,
+  listOpportunities,
+  createOpportunity,
   setOpportunityStage,
   removeOpportunity,
   STAGES,
   type Opportunity,
   type Segment,
   type Stage,
-} from "@/lib/store";
+} from "@/lib/opportunities";
 
 function euros(n: number) {
   return n.toLocaleString("fr-FR") + " €";
@@ -35,25 +35,31 @@ function PipelineView() {
   const [date, setDate] = useState("");
   const [owner, setOwner] = useState("");
 
-  useEffect(() => {
-    setOpps(getOpportunities());
-    setLoading(false);
+  const charger = useCallback(async () => {
+    try {
+      setOpps(await listOpportunities());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  function ajouter(e: React.FormEvent) {
+  useEffect(() => {
+    charger();
+  }, [charger]);
+
+  async function ajouter(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    setOpps(
-      addOpportunity({
-        title: title.trim(),
-        segment,
-        amount: Number(amount) || 0,
-        probability: Number(probability) || 0,
-        expected_date: date || null,
-        stage: "nouveau",
-        owner: owner.trim() || "—",
-      })
-    );
+    const created = await createOpportunity({
+      title: title.trim(),
+      segment,
+      amount: Number(amount) || 0,
+      probability: Number(probability) || 0,
+      expected_date: date || null,
+      stage: "nouveau",
+      owner: owner.trim() || "—",
+    });
+    setOpps((rows) => [created, ...rows]);
     setTitle("");
     setAmount("");
     setProbability("50");
@@ -61,13 +67,23 @@ function PipelineView() {
     setOwner("");
   }
 
-  function deplacer(id: number, stage: Stage) {
-    setOpps(setOpportunityStage(id, stage));
+  async function deplacer(id: number, stage: Stage) {
+    setOpps((rows) => rows.map((o) => (o.id === id ? { ...o, stage } : o)));
+    try {
+      await setOpportunityStage(id, stage);
+    } catch {
+      charger();
+    }
   }
 
-  function supprimer(id: number) {
+  async function supprimer(id: number) {
     if (!confirm("Supprimer cette opportunité ?")) return;
-    setOpps(removeOpportunity(id));
+    setOpps((rows) => rows.filter((o) => o.id !== id));
+    try {
+      await removeOpportunity(id);
+    } catch {
+      charger();
+    }
   }
 
   // Indicateurs

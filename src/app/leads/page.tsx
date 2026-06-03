@@ -14,7 +14,7 @@ import {
   type Lead,
   type LeadStatus,
 } from "@/lib/leads";
-import { addOpportunity } from "@/lib/store";
+import { createOpportunity } from "@/lib/opportunities";
 
 function LeadsView() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -52,7 +52,7 @@ function LeadsView() {
     // Le lead passe en "converti" dans Supabase ; l'opportunité est créée dans
     // le pipeline (encore en démo locale pour l'instant).
     await changerStatut(lead.id, "converti");
-    addOpportunity({
+    await createOpportunity({
       title: leadDisplayName(lead),
       segment: lead.segment,
       amount: 0,
