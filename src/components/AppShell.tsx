@@ -30,6 +30,7 @@ const MODULES: {
   { nom: "Interventions", href: "/interventions", roles: ["dirigeant", "technicien"] },
   { nom: "Carte commerciale", roles: ["dirigeant", "commercial"] },
   { nom: "Pipeline", href: "/pipeline", roles: ["dirigeant", "commercial"] },
+  { nom: "Calendrier", href: "/calendrier", roles: ["dirigeant", "commercial", "technicien"] },
   { nom: "Devis", roles: ["dirigeant", "commercial"] },
   { nom: "Contrats", roles: ["dirigeant", "commercial"] },
   { nom: "Planning", roles: ["dirigeant", "technicien"] },

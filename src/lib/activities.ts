@@ -57,3 +57,24 @@ export async function removeActivity(id: number): Promise<void> {
   const { error } = await supabase.from("activities").delete().eq("id", id);
   if (error) throw error;
 }
+
+// RDV (avec le compte lié) pour le calendrier — cloisonné par organisation (RLS).
+export type RdvWithClient = Activity & {
+  clients: {
+    id: number;
+    company_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    segment: "b2b" | "b2c";
+  } | null;
+};
+
+export async function listRdv(): Promise<RdvWithClient[]> {
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*, clients(id, company_name, first_name, last_name, segment)")
+    .eq("type", "rdv")
+    .order("occurred_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as RdvWithClient[];
+}

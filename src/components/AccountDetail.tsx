@@ -36,6 +36,7 @@ import {
   formatSize,
   type DocRow,
 } from "@/lib/documents";
+import OpportunityDrawer from "@/components/OpportunityDrawer";
 
 function euros(n: number) {
   return (n || 0).toLocaleString("fr-FR") + " €";
@@ -65,7 +66,13 @@ const TABS: { val: Tab; label: string }[] = [
   { val: "installations", label: "Installations" },
 ];
 
-export default function AccountDetail({ clientId }: { clientId: number }) {
+export default function AccountDetail({
+  clientId,
+  onBack,
+}: {
+  clientId: number;
+  onBack?: () => void;
+}) {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +81,7 @@ export default function AccountDetail({ clientId }: { clientId: number }) {
   const [opps, setOpps] = useState<Opportunity[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [docs, setDocs] = useState<DocRow[]>([]);
+  const [oppDrawer, setOppDrawer] = useState(false);
 
   const charger = useCallback(async () => {
     try {
@@ -107,9 +115,15 @@ export default function AccountDetail({ clientId }: { clientId: number }) {
   if (error || !client)
     return (
       <div className="space-y-4">
-        <Link href="/clients" className="text-sm text-[#0B7A87] hover:underline">
-          ← Retour
-        </Link>
+        {onBack ? (
+          <button onClick={onBack} className="text-sm text-[#0B7A87] hover:underline">
+            ← Retour
+          </button>
+        ) : (
+          <Link href="/clients" className="text-sm text-[#0B7A87] hover:underline">
+            ← Retour
+          </Link>
+        )}
         <p className="text-sm text-[#B91C1C]">{error ?? "Compte introuvable."}</p>
       </div>
     );
@@ -124,9 +138,15 @@ export default function AccountDetail({ clientId }: { clientId: number }) {
 
   return (
     <div className="space-y-5">
-      <Link href="/clients" className="inline-block text-sm text-[#0B7A87] hover:underline">
-        ← Retour aux clients
-      </Link>
+      {onBack ? (
+        <button onClick={onBack} className="inline-block text-sm text-[#0B7A87] hover:underline">
+          ← Retour aux clients
+        </button>
+      ) : (
+        <Link href="/clients" className="inline-block text-sm text-[#0B7A87] hover:underline">
+          ← Retour aux clients
+        </Link>
+      )}
 
       {/* En-tête */}
       <header className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-sm">
@@ -153,10 +173,18 @@ export default function AccountDetail({ clientId }: { clientId: number }) {
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-[#94A3B8]">Valeur estimée</div>
-            <div className="text-lg font-semibold text-[#0A2540]">{euros(client.estimated_value)}</div>
-            <div className="text-xs text-[#94A3B8]">Devis : {euros(client.quote_value)}</div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="text-right">
+              <div className="text-xs text-[#94A3B8]">Valeur estimée</div>
+              <div className="text-lg font-semibold text-[#0A2540]">{euros(client.estimated_value)}</div>
+              <div className="text-xs text-[#94A3B8]">Devis : {euros(client.quote_value)}</div>
+            </div>
+            <button
+              onClick={() => setOppDrawer(true)}
+              className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0c3358]"
+            >
+              + Nouvelle opportunité
+            </button>
           </div>
         </div>
 
@@ -204,6 +232,15 @@ export default function AccountDetail({ clientId }: { clientId: number }) {
       {tab === "installations" && (
         <Placeholder titre="Installations" texte="Ce module arrive bientôt : produits installés, numéros de série, garanties et prochains entretiens." />
       )}
+
+      <OpportunityDrawer
+        account={oppDrawer ? client : null}
+        onClose={() => setOppDrawer(false)}
+        onCreated={() => {
+          setTab("opportunites");
+          charger();
+        }}
+      />
     </div>
   );
 }

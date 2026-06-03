@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import AccountDetail from "@/components/AccountDetail";
 import {
@@ -27,8 +27,7 @@ function segBadge(seg: "b2b" | "b2c") {
     : { label: "B2C", classe: "bg-[#E6F7F9] text-[#0B7A87]" };
 }
 
-function ClientsList() {
-  const router = useRouter();
+function ClientsList({ onOpen }: { onOpen: (id: number) => void }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [wonIds, setWonIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -54,10 +53,6 @@ function ClientsList() {
   useEffect(() => {
     charger();
   }, [charger]);
-
-  function ouvrir(id: number) {
-    router.push(`/clients?compte=${id}`);
-  }
 
   async function changerStatut(id: number, s: ClientStatus) {
     setClients((rows) => rows.map((c) => (c.id === id ? { ...c, status: s } : c)));
@@ -141,7 +136,7 @@ function ClientsList() {
                 return (
                   <tr
                     key={c.id}
-                    onClick={() => ouvrir(c.id)}
+                    onClick={() => onOpen(c.id)}
                     className="cursor-pointer border-t border-[#F0F2F6] hover:bg-[#F8FAFC]"
                   >
                     <td className="px-5 py-3 font-medium text-[#0A2540]">
@@ -197,19 +192,33 @@ function ClientsList() {
   );
 }
 
-// Aiguillage : ?compte=ID → fiche 360, sinon la liste.
-function ClientsRouter() {
+// Navigation par état interne (robuste avec l'export statique). On lit une seule
+// fois l'éventuel ?compte=ID de l'adresse (lien profond depuis le Pipeline),
+// puis tout passe par l'état : « ← Retour » revient toujours à la liste complète.
+function ClientsApp() {
   const params = useSearchParams();
-  const compte = params.get("compte");
-  if (compte) return <AccountDetail clientId={Number(compte)} />;
-  return <ClientsList />;
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [inited, setInited] = useState(false);
+
+  useEffect(() => {
+    const c = params.get("compte");
+    setSelectedId(c ? Number(c) : null);
+    setInited(true);
+    // lecture unique au montage
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!inited) return <p className="text-sm text-[#64748B]">Chargement…</p>;
+  if (selectedId != null)
+    return <AccountDetail clientId={selectedId} onBack={() => setSelectedId(null)} />;
+  return <ClientsList onOpen={setSelectedId} />;
 }
 
 export default function Page() {
   return (
     <AppShell>
       <Suspense fallback={<p className="text-sm text-[#64748B]">Chargement…</p>}>
-        <ClientsRouter />
+        <ClientsApp />
       </Suspense>
     </AppShell>
   );
