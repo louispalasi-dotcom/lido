@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { clientDisplayName, type Client } from "@/lib/clients";
 import { uploadMaintenanceDoc, isImage } from "@/lib/maintenanceDocs";
+import MicButton from "@/components/MicButton";
 import { type StockItem } from "@/lib/stock";
 import {
   recordMaintenance,
@@ -301,13 +302,18 @@ export default function EntretienDrawer({
             </div>
           </div>
 
-          <textarea
-            className={inputCls}
-            rows={2}
-            placeholder="Notes (état machine, observations…)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
+          <div className="relative">
+            <textarea
+              className={`${inputCls} pr-11`}
+              rows={2}
+              placeholder="Notes (état machine, observations…)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+            <div className="absolute bottom-2 right-2">
+              <MicButton onText={(t) => setNotes((n) => (n ? n + " " : "") + t)} />
+            </div>
+          </div>
 
           {/* Pièces jointes (envoyées à la validation) */}
           <div>

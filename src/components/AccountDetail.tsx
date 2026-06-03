@@ -52,6 +52,7 @@ import {
 import QuoteDrawer from "@/components/QuoteDrawer";
 import EntretienDrawer from "@/components/EntretienDrawer";
 import MaintenanceAttachments from "@/components/MaintenanceAttachments";
+import MicButton from "@/components/MicButton";
 import { listStockItems, type StockItem } from "@/lib/stock";
 import {
   listMaintenancesByClient,
@@ -430,13 +431,18 @@ function ActivitesTab({
             🔧 Entretien
           </button>
         </div>
-        <textarea
-          className="w-full rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm"
-          rows={2}
-          placeholder={type === "note" ? "Votre note…" : "Compte-rendu, prochaine action…"}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
+        <div className="relative">
+          <textarea
+            className="w-full rounded-lg border border-[#E6EAF0] px-3 py-2 pr-11 text-sm"
+            rows={2}
+            placeholder={type === "note" ? "Votre note…" : "Compte-rendu, prochaine action…"}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          <div className="absolute bottom-2 right-2">
+            <MicButton onText={(t) => setContent((c) => (c ? c + " " : "") + t)} />
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="datetime-local"
