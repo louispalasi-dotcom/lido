@@ -200,12 +200,26 @@ export default function QuoteDrawer({
                       onChange={(e) => choisirArticle(i, e.target.value)}
                     >
                       <option value="">— Ligne libre —</option>
-                      {stock.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.nom}
-                          {s.prix_vente_ht != null ? ` (${s.prix_vente_ht} €)` : " (prix ?)"}
-                        </option>
-                      ))}
+                      <optgroup label="Produits">
+                        {stock
+                          .filter((s) => s.category === "produit")
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.nom}
+                              {s.prix_vente_ht != null ? ` (${s.prix_vente_ht} €)` : " (prix ?)"}
+                            </option>
+                          ))}
+                      </optgroup>
+                      <optgroup label="Pièces">
+                        {stock
+                          .filter((s) => s.category === "piece")
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.nom}
+                              {s.prix_vente_ht != null ? ` (${s.prix_vente_ht} €)` : " (prix ?)"}
+                            </option>
+                          ))}
+                      </optgroup>
                     </select>
                     <button onClick={() => retirerLigne(i)} className="text-[#94A3B8] hover:text-red-600" aria-label="Retirer">
                       ✕

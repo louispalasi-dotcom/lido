@@ -11,6 +11,7 @@ export type StockItem = {
   seuil_alerte: number;
   prix_vente_ht: number | null;
   cout_ht: number | null;
+  category: "piece" | "produit";
 };
 
 export type PartPrice = {

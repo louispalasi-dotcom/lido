@@ -5,13 +5,17 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import {
   listQuotes,
+  createQuote,
   quoteRef,
   quoteStatutMeta,
   euros,
   QUOTE_STATUTS,
+  type Quote,
   type QuoteWithClient,
   type QuoteStatus,
 } from "@/lib/quotes";
+import { listClients, clientDisplayName, type Client } from "@/lib/clients";
+import QuoteDrawer from "@/components/QuoteDrawer";
 
 function nomCompte(q: QuoteWithClient): string {
   const c = q.clients;
@@ -27,12 +31,18 @@ function fmt(d: string | null) {
 function DevisView() {
   const router = useRouter();
   const [quotes, setQuotes] = useState<QuoteWithClient[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtre, setFiltre] = useState<"tous" | QuoteStatus>("tous");
+  const [picker, setPicker] = useState(false);
+  const [choixClient, setChoixClient] = useState("");
+  const [editing, setEditing] = useState<Quote | null>(null);
 
   const charger = useCallback(async () => {
     try {
-      setQuotes(await listQuotes());
+      const [q, c] = await Promise.all([listQuotes(), listClients()]);
+      setQuotes(q);
+      setClients(c);
     } finally {
       setLoading(false);
     }
@@ -41,6 +51,14 @@ function DevisView() {
   useEffect(() => {
     charger();
   }, [charger]);
+
+  async function creer() {
+    if (!choixClient) return;
+    const q = await createQuote({ client_id: Number(choixClient) });
+    setPicker(false);
+    setChoixClient("");
+    setEditing(q);
+  }
 
   const liste = filtre === "tous" ? quotes : quotes.filter((q) => q.status === filtre);
   const totalAccepte = quotes
@@ -54,11 +72,52 @@ function DevisView() {
           <h2 className="text-lg font-semibold">Devis</h2>
           <p className="text-sm text-[#64748B]">Tous les devis de l&apos;organisation.</p>
         </div>
-        <div className="text-right">
-          <div className="text-xs text-[#94A3B8]">Total accepté</div>
-          <div className="text-xl font-semibold text-[#15803D]">{euros(totalAccepte)}</div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <div className="text-xs text-[#94A3B8]">Total accepté</div>
+            <div className="text-xl font-semibold text-[#15803D]">{euros(totalAccepte)}</div>
+          </div>
+          <button
+            onClick={() => setPicker((v) => !v)}
+            className="rounded-lg bg-[#0A2540] px-4 py-2 text-sm font-medium text-white hover:bg-[#0c3358]"
+          >
+            + Nouveau devis
+          </button>
         </div>
       </div>
+
+      {picker && (
+        <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-[#E6EAF0] bg-white p-4 shadow-sm">
+          <label className="text-sm text-[#64748B]">
+            Compte client
+            <select
+              className="mt-1 block w-64 rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm"
+              value={choixClient}
+              onChange={(e) => setChoixClient(e.target.value)}
+            >
+              <option value="">— Choisir un compte —</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {clientDisplayName(c)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            onClick={creer}
+            disabled={!choixClient}
+            className="rounded-lg bg-[#14B8C4] px-4 py-2 text-sm font-medium text-[#04212e] disabled:opacity-50"
+          >
+            Créer le devis
+          </button>
+          <button
+            onClick={() => setPicker(false)}
+            className="rounded-lg border border-[#E6EAF0] px-4 py-2 text-sm text-[#64748B]"
+          >
+            Annuler
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 text-sm">
         {(["tous", ...QUOTE_STATUTS.map((s) => s.val)] as const).map((f) => (
@@ -117,6 +176,8 @@ function DevisView() {
           </table>
         )}
       </section>
+
+      <QuoteDrawer quote={editing} onClose={() => setEditing(null)} onSaved={charger} />
     </div>
   );
 }
