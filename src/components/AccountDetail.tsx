@@ -48,6 +48,16 @@ import {
   ETAT_ENTRETIEN,
   type Installation,
 } from "@/lib/installations";
+import QuoteDrawer from "@/components/QuoteDrawer";
+import {
+  listQuotesByClient,
+  createQuote,
+  removeQuote,
+  quoteRef,
+  quoteStatutMeta,
+  euros as eurosQ,
+  type Quote,
+} from "@/lib/quotes";
 
 function euros(n: number) {
   return (n || 0).toLocaleString("fr-FR") + " €";
@@ -240,9 +250,7 @@ export default function AccountDetail({
           onChange={charger}
         />
       )}
-      {tab === "devis" && (
-        <Placeholder titre="Devis & Factures" texte="Ce module arrive bientôt : génération de devis et de factures rattachés au compte." />
-      )}
+      {tab === "devis" && <DevisTab clientId={client.id} />}
       {tab === "installations" && (
         <InstallationsTab clientId={client.id} installs={installs} onChange={charger} />
       )}
@@ -671,15 +679,88 @@ function InstallationsTab({
   );
 }
 
-// ---------- Placeholder ----------
-function Placeholder({ titre, texte }: { titre: string; texte: string }) {
+// ---------- Onglet Devis & Factures ----------
+function DevisTab({ clientId }: { clientId: number }) {
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Quote | null>(null);
+
+  const charger = useCallback(async () => {
+    try {
+      setQuotes(await listQuotesByClient(clientId));
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    charger();
+  }, [charger]);
+
+  async function nouveau() {
+    const q = await createQuote({ client_id: clientId });
+    setQuotes((r) => [q, ...r]);
+    setEditing(q);
+  }
+
+  async function supprimer(id: number) {
+    if (!confirm("Supprimer ce devis ?")) return;
+    setQuotes((r) => r.filter((q) => q.id !== id));
+    await removeQuote(id);
+  }
+
   return (
-    <div className="rounded-2xl border border-dashed border-[#E6EAF0] bg-[#FBFCFE] p-8 text-center">
-      <p className="text-sm font-semibold text-[#64748B]">{titre}</p>
-      <p className="mx-auto mt-1 max-w-md text-sm text-[#94A3B8]">{texte}</p>
-      <span className="mt-3 inline-block rounded-full bg-[#EEF2F7] px-3 py-1 text-xs font-medium text-[#475569]">
-        À venir
-      </span>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-[#0A2540]">Devis</h3>
+        <button
+          onClick={nouveau}
+          className="rounded-lg bg-[#0A2540] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0c3358]"
+        >
+          + Nouveau devis
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-[#64748B]">Chargement…</p>
+      ) : quotes.length === 0 ? (
+        <p className="text-sm text-[#64748B]">Aucun devis pour ce compte.</p>
+      ) : (
+        <ul className="divide-y divide-[#F0F2F6] overflow-hidden rounded-2xl border border-[#E6EAF0] bg-white shadow-sm">
+          {quotes.map((q) => {
+            const meta = quoteStatutMeta(q.status);
+            return (
+              <li key={q.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <button onClick={() => setEditing(q)} className="min-w-0 text-left">
+                  <span className="block text-sm font-medium text-[#0A2540]">
+                    {quoteRef(q)} {q.title ? `· ${q.title}` : ""}
+                  </span>
+                  <span className="text-xs text-[#94A3B8]">{fmtDate(q.issue_date)}</span>
+                </button>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-sm font-semibold text-[#0A2540]">{eurosQ(q.total)}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${meta.classe}`}>
+                    {meta.label}
+                  </span>
+                  <button
+                    onClick={() => supprimer(q.id)}
+                    className="text-xs text-[#94A3B8] hover:text-red-600"
+                  >
+                    Suppr.
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="rounded-xl border border-dashed border-[#E6EAF0] bg-[#FBFCFE] px-4 py-3 text-sm text-[#94A3B8]">
+        <strong className="text-[#64748B]">Factures</strong> — à venir (générées automatiquement
+        depuis les devis acceptés et les entretiens).
+      </div>
+
+      <QuoteDrawer quote={editing} onClose={() => setEditing(null)} onSaved={charger} />
     </div>
   );
 }
