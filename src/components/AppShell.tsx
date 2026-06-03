@@ -35,7 +35,7 @@ const MODULES: {
   { nom: "Devis", href: "/devis", roles: ["dirigeant", "commercial"] },
   { nom: "Contrats", roles: ["dirigeant", "commercial"] },
   { nom: "Planning", roles: ["dirigeant", "technicien"] },
-  { nom: "Facturation", roles: ["dirigeant"] },
+  { nom: "Facturation", href: "/facturation", roles: ["dirigeant"] },
   { nom: "Assistant IA", roles: ["dirigeant", "commercial", "technicien"] },
 ];
 
