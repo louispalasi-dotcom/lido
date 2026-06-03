@@ -170,7 +170,13 @@ export default function EntretienDrawer({
                       <select
                         className="min-w-0 flex-1 rounded-lg border border-[#E6EAF0] px-2 py-1.5 text-sm"
                         value={l.stock_item_id}
-                        onChange={(e) => setLigne(i, { stock_item_id: e.target.value })}
+                        onChange={(e) => {
+                          const item = stockItems.find((s) => String(s.id) === e.target.value);
+                          setLigne(i, {
+                            stock_item_id: e.target.value,
+                            amount: item?.prix_vente_ht != null ? String(item.prix_vente_ht) : l.amount,
+                          });
+                        }}
                       >
                         <option value="">— Choisir un article —</option>
                         {stockItems.map((s) => (

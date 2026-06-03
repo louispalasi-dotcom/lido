@@ -4,6 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import { listOpportunities, type Opportunity } from "@/lib/opportunities";
 import {
+  listCommissionActs,
+  ACT_CATEGORIES,
+  type CommissionAct,
+} from "@/lib/commissionActs";
+import {
   listInvoices,
   createInvoice,
   setInvoiceStatus,
@@ -18,15 +23,21 @@ import {
 function FacturationView() {
   const [opps, setOpps] = useState<Opportunity[]>([]);
   const [invoices, setInvoices] = useState<InternalInvoice[]>([]);
+  const [actes, setActes] = useState<CommissionAct[]>([]);
   const [loading, setLoading] = useState(true);
   const [rate, setRate] = useState(10);
   const [info, setInfo] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     try {
-      const [o, inv] = await Promise.all([listOpportunities(), listInvoices()]);
+      const [o, inv, a] = await Promise.all([
+        listOpportunities(),
+        listInvoices(),
+        listCommissionActs(),
+      ]);
       setOpps(o);
       setInvoices(inv);
+      setActes(a);
     } finally {
       setLoading(false);
     }
@@ -230,6 +241,41 @@ function FacturationView() {
         <p className="mt-3 text-xs text-[#94A3B8]">
           Clique sur le statut pour basculer « à payer » / « payée ».
         </p>
+      </section>
+
+      {/* Barème officiel des commissions (par acte) */}
+      <section className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-sm">
+        <h3 className="font-semibold text-[#0A2540]">Barème des commissions (par acte)</h3>
+        <p className="mb-4 mt-1 text-xs text-[#94A3B8]">
+          Montant fixe par acte (issu de tes tarifs Aqualistes). L&apos;estimation ci-dessus est un
+          calcul simplifié au pourcentage ; ce barème est la vraie référence par acte.
+        </p>
+        {actes.length === 0 ? (
+          <p className="text-sm text-[#64748B]">Barème non chargé.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {ACT_CATEGORIES.map((cat) => {
+              const liste = actes.filter((a) => a.category === cat.val);
+              return (
+                <div key={cat.val}>
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#94A3B8]">
+                    {cat.label}
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {liste.map((a) => (
+                      <li key={a.id} className="flex items-start justify-between gap-2 text-sm">
+                        <span className="min-w-0 text-[#0A2540]">{a.label}</span>
+                        <span className="shrink-0 font-semibold text-[#15803D]">
+                          {a.commission_ht} €
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );
