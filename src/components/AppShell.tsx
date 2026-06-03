@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+import Login from "@/components/Login";
 
 export type Role = "dirigeant" | "commercial" | "technicien";
 
@@ -37,12 +40,38 @@ const MODULES: {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [role, setRole] = useState<Role>("dirigeant");
+  const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   // Récupère le rôle choisi (mémorisé dans le navigateur).
   useEffect(() => {
     const saved = localStorage.getItem("lido-role") as Role | null;
     if (saved) setRole(saved);
   }, []);
+
+  // Suit l'état de connexion (Supabase Auth).
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Tant qu'on ne sait pas si l'utilisateur est connecté, on patiente.
+  if (!authReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F6F8FB] text-sm text-[#64748B]">
+        Chargement…
+      </div>
+    );
+  }
+
+  // Pas connecté → écran de connexion (l'app n'est pas accessible).
+  if (!session) return <Login />;
 
   function changeRole(r: Role) {
     setRole(r);
@@ -102,28 +131,40 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 Filtration & traitement de l&apos;eau · CRM
               </p>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-[#64748B]">Vue :</span>
-              <select
-                value={role}
-                onChange={(e) => changeRole(e.target.value as Role)}
-                className="rounded-lg border border-[#E6EAF0] bg-white px-3 py-1.5 font-medium"
-              >
-                {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABEL[r]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-[#64748B]">Vue :</span>
+                <select
+                  value={role}
+                  onChange={(e) => changeRole(e.target.value as Role)}
+                  className="rounded-lg border border-[#E6EAF0] bg-white px-3 py-1.5 font-medium"
+                >
+                  {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex items-center gap-2 border-l border-[#E6EAF0] pl-3 text-sm">
+                <span className="hidden text-[#94A3B8] sm:inline">{session.user.email}</span>
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="rounded-lg border border-[#E6EAF0] px-3 py-1.5 text-[#64748B] hover:bg-[#F8FAFC]"
+                >
+                  Se déconnecter
+                </button>
+              </div>
+            </div>
           </header>
 
           <div className="space-y-6 p-6">
             <div className="rounded-xl border border-[#CDE9ED] bg-[#F0FBFC] px-4 py-3 text-sm text-[#0B7A87]">
-              <strong>Démonstration</strong> — tu peux ajouter, modifier et
-              supprimer des données : elles sont enregistrées <strong>dans ton
-              navigateur</strong>. La version production branchera la base
-              Supabase (avec connexion par compte) à cette même interface.
+              <strong>Tu es connecté.</strong> Les <strong>leads</strong> sont
+              désormais enregistrés dans la <strong>vraie base Supabase</strong>{" "}
+              (protégée par ta connexion). Les autres modules (clients, pipeline,
+              interventions) restent en démo locale pour l&apos;instant — ils
+              basculeront sur Supabase au fur et à mesure.
             </div>
             {children}
           </div>
