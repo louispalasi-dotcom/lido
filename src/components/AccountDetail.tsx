@@ -51,6 +51,7 @@ import {
 } from "@/lib/installations";
 import QuoteDrawer from "@/components/QuoteDrawer";
 import EntretienDrawer from "@/components/EntretienDrawer";
+import MaintenanceAttachments from "@/components/MaintenanceAttachments";
 import { listStockItems, type StockItem } from "@/lib/stock";
 import {
   listMaintenancesByClient,
@@ -397,6 +398,7 @@ function ActivitesTab({
                   Total facturé : {euros(maintenanceTotal(m))}
                 </p>
                 {m.notes && <p className="mt-1 text-xs text-[#64748B]">{m.notes}</p>}
+                <EntretienAttachments maintenanceId={m.id} organizationId={client.organization_id} />
               </li>
             ))}
           </ul>
@@ -488,6 +490,27 @@ function ActivitesTab({
         onSaved={chargerEntretiens}
       />
     </div>
+  );
+}
+
+// Pièces jointes d'un entretien passé (chargées seulement à l'ouverture).
+function EntretienAttachments({
+  maintenanceId,
+  organizationId,
+}: {
+  maintenanceId: number;
+  organizationId: number;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="mt-2" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer text-xs font-medium text-[#0B7A87]">Pièces jointes</summary>
+      <div className="mt-2">
+        {open && (
+          <MaintenanceAttachments maintenanceId={maintenanceId} organizationId={organizationId} />
+        )}
+      </div>
+    </details>
   );
 }
 

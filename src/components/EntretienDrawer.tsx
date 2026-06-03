@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clientDisplayName, type Client } from "@/lib/clients";
+import { uploadMaintenanceDoc, isImage } from "@/lib/maintenanceDocs";
 import { type StockItem } from "@/lib/stock";
 import {
   recordMaintenance,
@@ -44,8 +45,11 @@ export default function EntretienDrawer({
   const [standard, setStandard] = useState("");
   const [notes, setNotes] = useState("");
   const [lignes, setLignes] = useState<Ligne[]>([]);
+  const [pending, setPending] = useState<{ file: File; url: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const camRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!client) return;
@@ -54,8 +58,23 @@ export default function EntretienDrawer({
     setStandard(localStorage.getItem("lido-entretien-standard") ?? "");
     setNotes("");
     setLignes([]);
+    setPending([]);
     setError(null);
   }, [client]);
+
+  function ajouterFichiers(files: FileList | File[]) {
+    const arr = Array.from(files).map((file) => ({
+      file,
+      url: isImage(file.type) ? URL.createObjectURL(file) : "",
+    }));
+    setPending((p) => [...p, ...arr]);
+  }
+  function retirerFichier(i: number) {
+    setPending((p) => {
+      if (p[i]?.url) URL.revokeObjectURL(p[i].url);
+      return p.filter((_, idx) => idx !== i);
+    });
+  }
 
   function changeStandard(v: string) {
     setStandard(v);
@@ -95,7 +114,7 @@ export default function EntretienDrawer({
             amount: l.amount === "" ? null : Number(l.amount),
           };
         });
-      await recordMaintenance({
+      const mid = await recordMaintenance({
         client_id: client.id,
         occurred_at: new Date(occurredAt).toISOString(),
         kind,
@@ -103,6 +122,15 @@ export default function EntretienDrawer({
         standard_amount: Number(standard) || 0,
         lines,
       });
+      // Envoi des pièces jointes une fois l'entretien créé (best effort).
+      for (const p of pending) {
+        try {
+          await uploadMaintenanceDoc(client.organization_id, mid, p.file);
+        } catch {
+          /* on n'échoue pas tout l'entretien pour un fichier */
+        }
+        if (p.url) URL.revokeObjectURL(p.url);
+      }
       onSaved();
       onClose();
     } catch {
@@ -280,6 +308,54 @@ export default function EntretienDrawer({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
+
+          {/* Pièces jointes (envoyées à la validation) */}
+          <div>
+            <label className={labelCls}>Pièces jointes</label>
+            <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => e.target.files && ajouterFichiers(e.target.files)} />
+            <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files && ajouterFichiers(e.target.files)} />
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                ajouterFichiers(e.dataTransfer.files);
+              }}
+              className="rounded-xl border border-dashed border-[#CDE9ED] bg-[#FBFDFE] px-3 py-3 text-center text-xs"
+            >
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button type="button" onClick={() => camRef.current?.click()} className="rounded-lg border border-[#E6EAF0] bg-white px-3 py-1.5 font-medium text-[#0B7A87] hover:bg-[#F8FAFC]">
+                  📷 Photo
+                </button>
+                <button type="button" onClick={() => fileRef.current?.click()} className="rounded-lg border border-[#E6EAF0] bg-white px-3 py-1.5 font-medium text-[#0B7A87] hover:bg-[#F8FAFC]">
+                  📎 Fichier
+                </button>
+                <span className="text-[#94A3B8]">ou glisse-dépose</span>
+              </div>
+            </div>
+            {pending.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {pending.map((p, i) => (
+                  <div key={i} className="relative h-14 w-14 overflow-hidden rounded-lg border border-[#E6EAF0]">
+                    {p.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center px-1 text-center text-[9px] text-[#64748B]">
+                        {p.file.name.split(".").pop()?.toUpperCase()}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => retirerFichier(i)}
+                      className="absolute right-0 top-0 bg-black/50 px-1 text-[10px] text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {error && <p className="rounded-lg bg-[#FDECEC] px-3 py-2 text-sm text-[#B91C1C]">{error}</p>}
         </div>
