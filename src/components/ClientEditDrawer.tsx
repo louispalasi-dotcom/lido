@@ -10,6 +10,7 @@ import {
   type Temperature,
 } from "@/lib/clients";
 import { STREET_TYPES } from "@/lib/leads";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 const inputCls =
   "w-full rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm focus:border-[#14B8C4] focus:outline-none";
@@ -175,6 +176,15 @@ export default function ClientEditDrawer({
                 <input className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
             </div>
+            <AddressAutocomplete
+              onPick={(a) => {
+                setAddrNumber(a.number);
+                setStreetType(a.type);
+                setStreetName(a.street);
+                setPostalCode(a.postal);
+                setCity(a.city);
+              }}
+            />
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className={labelCls}>N°</label>

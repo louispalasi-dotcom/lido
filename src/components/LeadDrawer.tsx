@@ -9,6 +9,7 @@ import {
   type Origin,
 } from "@/lib/leads";
 import { notify } from "@/lib/push";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 const inputCls =
   "w-full rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm focus:border-[#14B8C4] focus:outline-none";
@@ -256,6 +257,15 @@ export default function LeadDrawer({
 
           {/* Adresse */}
           <Section title="Adresse">
+            <AddressAutocomplete
+              onPick={(a) => {
+                setAddrNumber(a.number);
+                setStreetType(a.type);
+                setStreetName(a.street);
+                setPostalCode(a.postal);
+                setCity(a.city);
+              }}
+            />
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className={labelCls}>N°</label>
