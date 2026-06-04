@@ -7,6 +7,7 @@ import { listLeads, type Lead } from "@/lib/leads";
 import { listClients, type Client } from "@/lib/clients";
 import { listInstallations, etatEntretien, type InstallationWithClient } from "@/lib/installations";
 import { listAllMaintenances, type MaintenanceWithClient } from "@/lib/maintenances";
+import { listYearlyMetrics, type YearlyMetric } from "@/lib/metrics";
 
 function euros(n: number) {
   return Math.round(n || 0).toLocaleString("fr-FR") + " €";
@@ -28,22 +29,25 @@ function DirectionView() {
   const [clients, setClients] = useState<Client[]>([]);
   const [installs, setInstalls] = useState<InstallationWithClient[]>([]);
   const [maint, setMaint] = useState<MaintenanceWithClient[]>([]);
+  const [yearly, setYearly] = useState<YearlyMetric[]>([]);
   const [loading, setLoading] = useState(true);
 
   const charger = useCallback(async () => {
     try {
-      const [o, l, c, i, m] = await Promise.all([
+      const [o, l, c, i, m, y] = await Promise.all([
         listOpportunities(),
         listLeads(),
         listClients(),
         listInstallations(),
         listAllMaintenances(),
+        listYearlyMetrics(),
       ]);
       setOpps(o);
       setLeads(l);
       setClients(c);
       setInstalls(i);
       setMaint(m);
+      setYearly(y);
     } finally {
       setLoading(false);
     }
@@ -111,8 +115,12 @@ function DirectionView() {
     return ly.length ? (ly.filter((l) => l.status === "converti").length / ly.length) * 100 : 0;
   };
   const cur = { ca: caYear(Y), entr: entrYear(Y), cli: cliYear(Y), conv: convYear(Y) };
-  const prev = { ca: caYear(Yp), entr: entrYear(Yp), cli: cliYear(Yp), conv: convYear(Yp) };
-  const hasN1 = prev.ca + prev.entr + prev.cli + leadsYear(Yp).length > 0;
+  // N-1 : on prend l'historique importé s'il existe, sinon le calcul sur les données vivantes.
+  const stored = yearly.find((y) => y.year === Yp);
+  const prev = stored
+    ? { ca: stored.ca, entr: stored.entretiens, cli: stored.clients, conv: stored.conversion }
+    : { ca: caYear(Yp), entr: entrYear(Yp), cli: cliYear(Yp), conv: convYear(Yp) };
+  const hasN1 = !!stored || prev.ca + prev.entr + prev.cli + leadsYear(Yp).length > 0;
 
   return (
     <div className="space-y-6">
@@ -149,6 +157,33 @@ function DirectionView() {
           <Compare label="Conversion leads" cur={pct(cur.conv)} curN={cur.conv} prevN={prev.conv} hasN1={hasN1} />
         </div>
       </section>
+
+      {/* Graphique CA par Aqualiste */}
+      {rows.some((r) => r.ca > 0) && (
+        <section className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-sm">
+          <h3 className="mb-4 font-semibold text-[#0A2540]">CA généré par Aqualiste</h3>
+          <div className="space-y-2">
+            {(() => {
+              const top = rows.filter((r) => r.ca > 0).slice(0, 8);
+              const max = Math.max(...top.map((r) => r.ca), 1);
+              return top.map((r) => (
+                <div key={r.a} className="flex items-center gap-3 text-sm">
+                  <span className="w-28 shrink-0 truncate text-[#64748B]">{r.a}</span>
+                  <div className="h-5 flex-1 overflow-hidden rounded-full bg-[#F1F5F9]">
+                    <div
+                      className="h-full rounded-full bg-[#14B8C4]"
+                      style={{ width: `${(r.ca / max) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-24 shrink-0 text-right font-medium text-[#0A2540]">
+                    {euros(r.ca)}
+                  </span>
+                </div>
+              ));
+            })()}
+          </div>
+        </section>
+      )}
 
       {/* Tableau Aqualistes */}
       <section className="overflow-x-auto rounded-2xl border border-[#E6EAF0] bg-white shadow-sm">
