@@ -26,6 +26,7 @@ const MODULES: {
   roles: Role[];
 }[] = [
   { nom: "Tableau de bord", href: "/", roles: ["dirigeant", "commercial", "technicien"] },
+  { nom: "Direction", href: "/direction", roles: ["dirigeant"] },
   { nom: "Leads", href: "/leads", roles: ["dirigeant", "commercial"] },
   { nom: "Clients", href: "/clients", roles: ["dirigeant", "commercial"] },
   { nom: "Interventions", href: "/interventions", roles: ["dirigeant", "technicien"] },

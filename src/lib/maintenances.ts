@@ -45,6 +45,20 @@ export function kindLabel(k: MaintenanceKind) {
   return MAINTENANCE_KINDS.find((x) => x.val === k)?.label ?? k;
 }
 
+export type MaintenanceWithClient = Maintenance & {
+  clients: { sales_rep: string | null; installer: string | null } | null;
+};
+
+// Tous les entretiens de l'organisation (pour le tableau de bord dirigeant).
+export async function listAllMaintenances(): Promise<MaintenanceWithClient[]> {
+  const { data, error } = await supabase
+    .from("maintenances")
+    .select("*, clients(sales_rep, installer)")
+    .order("occurred_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as MaintenanceWithClient[];
+}
+
 export async function listMaintenancesByClient(clientId: number): Promise<Maintenance[]> {
   const { data, error } = await supabase
     .from("maintenances")
