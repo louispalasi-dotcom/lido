@@ -75,7 +75,9 @@ function ClientsList({ onOpen }: { onOpen: (id: number) => void }) {
     }
   }
 
-  const gagnes = clients.filter((c) => wonIds.has(c.id));
+  // Un compte apparaît dans "Clients" s'il a une affaire gagnée OU s'il est déjà
+  // au statut "client" (cas des clients existants importés).
+  const gagnes = clients.filter((c) => wonIds.has(c.id) || c.status === "client");
   const liste = filtre === "tous" ? gagnes : gagnes.filter((c) => c.status === filtre);
 
   return (
@@ -83,9 +85,9 @@ function ClientsList({ onOpen }: { onOpen: (id: number) => void }) {
       <h2 className="text-lg font-semibold">Clients</h2>
 
       <p className="rounded-xl border border-[#CDE9ED] bg-[#F0FBFC] px-4 py-3 text-sm text-[#0B7A87]">
-        Ici, les comptes ayant au moins une <strong>affaire gagnée</strong>. Les prospects en cours
-        sont accessibles depuis le <strong>Pipeline</strong> (clique une opportunité). Clique une
-        ligne pour ouvrir la <strong>fiche 360</strong>.
+        Tes <strong>clients</strong> (statut client ou affaire gagnée). Les prospects en cours sont
+        accessibles depuis le <strong>Pipeline</strong> (clique une opportunité). Clique une ligne
+        pour ouvrir la <strong>fiche 360</strong>.
       </p>
 
       {error && (
