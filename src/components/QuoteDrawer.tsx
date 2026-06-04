@@ -15,6 +15,7 @@ import {
 } from "@/lib/quotes";
 import { setOpportunityStage } from "@/lib/opportunities";
 import { listStockItems, type StockItem } from "@/lib/stock";
+import { notify } from "@/lib/push";
 
 const inputCls =
   "w-full rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm focus:border-[#14B8C4] focus:outline-none";
@@ -113,6 +114,10 @@ export default function QuoteDrawer({
       // Devis envoyé → l'opportunité passe à l'étape "Devis envoyé".
       if (status === "envoye" && quote.opportunity_id) {
         await setOpportunityStage(quote.opportunity_id, "devis");
+      }
+      // Devis signé (accepté) → notification.
+      if (status === "accepte") {
+        notify("Devis signé ✅", `${quoteRef(quote)} accepté`, "./devis/");
       }
       return true;
     } finally {

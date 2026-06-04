@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   basePath: isGitHubPages ? "/lido" : undefined,
   assetPrefix: isGitHubPages ? "/lido/" : undefined,
   trailingSlash: true, // URLs propres sur GitHub Pages
+  // Exposé au client pour enregistrer le service worker / manifest au bon chemin.
+  env: { NEXT_PUBLIC_BASE_PATH: isGitHubPages ? "/lido" : "" },
 };
 
 export default nextConfig;

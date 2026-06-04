@@ -8,6 +8,7 @@ import {
   type Segment,
   type Origin,
 } from "@/lib/leads";
+import { notify } from "@/lib/push";
 
 const inputCls =
   "w-full rounded-lg border border-[#E6EAF0] px-3 py-2 text-sm focus:border-[#14B8C4] focus:outline-none";
@@ -109,6 +110,11 @@ export default function LeadDrawer({
         installer: installer.trim() || null,
         origin: origin || null,
       });
+      const nom =
+        segment === "b2b"
+          ? companyName.trim()
+          : [firstName, lastName].filter(Boolean).join(" ").trim();
+      notify("Nouveau lead", nom || "Un nouveau lead a été créé", "./leads/");
       reset();
       onSaved();
       onClose();

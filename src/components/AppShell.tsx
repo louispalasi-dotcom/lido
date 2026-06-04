@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import Login from "@/components/Login";
+import NotifButton from "@/components/NotifButton";
 
 export type Role = "dirigeant" | "commercial" | "technicien";
 
@@ -195,6 +196,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   </select>
                 </label>
                 <div className="flex items-center gap-2 border-l border-[#E6EAF0] pl-2 text-sm sm:pl-3">
+                  <NotifButton />
                   <span className="hidden text-[#94A3B8] lg:inline">{session.user.email}</span>
                   <button
                     onClick={() => supabase.auth.signOut()}
