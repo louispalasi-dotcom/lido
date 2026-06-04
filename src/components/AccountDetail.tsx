@@ -53,6 +53,7 @@ import QuoteDrawer from "@/components/QuoteDrawer";
 import EntretienDrawer from "@/components/EntretienDrawer";
 import MaintenanceAttachments from "@/components/MaintenanceAttachments";
 import MicButton from "@/components/MicButton";
+import { AttachmentsToggle } from "@/components/Attachments";
 import { listStockItems, type StockItem } from "@/lib/stock";
 import {
   listMaintenancesByClient,
@@ -590,6 +591,9 @@ function OpportunitesTab({
                 Nouveau devis
               </button>
             )}
+          </div>
+          <div className="w-full">
+            <AttachmentsToggle ownerType="opportunity" ownerId={o.id} organizationId={o.organization_id} />
           </div>
         </div>
         );

@@ -19,6 +19,7 @@ export type Stage =
 export type Opportunity = {
   id: number;
   created_at: string;
+  organization_id: number;
   client_id: number | null;
   title: string;
   segment: Segment;

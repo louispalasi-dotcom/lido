@@ -8,6 +8,13 @@ import {
   ACT_CATEGORIES,
   type CommissionAct,
 } from "@/lib/commissionActs";
+import { listQuotes, quoteRef, euros as eurosQ, type QuoteWithClient } from "@/lib/quotes";
+
+function nomCompte(q: QuoteWithClient): string {
+  const c = q.clients;
+  if (!c) return "Compte";
+  return c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || "Compte";
+}
 import {
   listInvoices,
   createInvoice,
@@ -24,20 +31,23 @@ function FacturationView() {
   const [opps, setOpps] = useState<Opportunity[]>([]);
   const [invoices, setInvoices] = useState<InternalInvoice[]>([]);
   const [actes, setActes] = useState<CommissionAct[]>([]);
+  const [quotes, setQuotes] = useState<QuoteWithClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [rate, setRate] = useState(10);
   const [info, setInfo] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     try {
-      const [o, inv, a] = await Promise.all([
+      const [o, inv, a, q] = await Promise.all([
         listOpportunities(),
         listInvoices(),
         listCommissionActs(),
+        listQuotes(),
       ]);
       setOpps(o);
       setInvoices(inv);
       setActes(a);
+      setQuotes(q);
     } finally {
       setLoading(false);
     }
@@ -122,6 +132,56 @@ function FacturationView() {
           %
         </label>
       </div>
+
+      {/* Factures clients (devis acceptés) */}
+      <section className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-sm">
+        {(() => {
+          const facturees = quotes.filter((q) => q.status === "accepte");
+          const totalTtc = facturees.reduce((s, q) => s + q.total, 0);
+          return (
+            <>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h3 className="font-semibold text-[#0A2540]">Factures clients</h3>
+                <span className="text-sm text-[#15803D]">
+                  Total facturé : <strong>{eurosQ(totalTtc)}</strong>
+                </span>
+              </div>
+              {facturees.length === 0 ? (
+                <p className="text-sm text-[#64748B]">
+                  Aucune facture. Un devis passé en « Accepté » apparaît ici comme facture client.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[520px] text-left text-sm">
+                    <thead className="text-xs uppercase text-[#94A3B8]">
+                      <tr>
+                        <th className="py-2 font-medium">Réf.</th>
+                        <th className="py-2 font-medium">Client</th>
+                        <th className="py-2 font-medium">Date</th>
+                        <th className="py-2 font-medium">Total TTC</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {facturees.map((q) => (
+                        <tr key={q.id} className="border-t border-[#F0F2F6]">
+                          <td className="py-2 font-medium text-[#0A2540]">{quoteRef(q)}</td>
+                          <td className="py-2 text-[#0A2540]">{nomCompte(q)}</td>
+                          <td className="py-2 text-[#64748B]">
+                            {q.issue_date
+                              ? new Date(q.issue_date).toLocaleDateString("fr-FR")
+                              : "—"}
+                          </td>
+                          <td className="py-2 font-semibold text-[#0A2540]">{eurosQ(q.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          );
+        })()}
+      </section>
 
       {/* Commissions */}
       <section className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-sm">

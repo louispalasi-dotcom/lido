@@ -24,6 +24,7 @@ export type Origin =
 export type Lead = {
   id: number;
   created_at: string;
+  organization_id: number;
   segment: Segment;
   status: LeadStatus;
   first_name: string | null;
@@ -44,7 +45,7 @@ export type Lead = {
 };
 
 // Données envoyées à la création (id, created_at et status sont gérés par la base).
-export type NewLead = Omit<Lead, "id" | "created_at" | "status"> & {
+export type NewLead = Omit<Lead, "id" | "created_at" | "organization_id" | "status"> & {
   status?: LeadStatus;
 };
 

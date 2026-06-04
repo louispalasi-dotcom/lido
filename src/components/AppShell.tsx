@@ -40,6 +40,7 @@ const MODULES: {
   { nom: "Planning", roles: ["dirigeant", "technicien"] },
   { nom: "Facturation", href: "/facturation", roles: ["dirigeant"] },
   { nom: "Assistant IA", roles: ["dirigeant", "commercial", "technicien"] },
+  { nom: "Contact", href: "/contact", roles: ["dirigeant", "commercial", "technicien"] },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {

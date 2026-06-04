@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import AppShell from "@/components/AppShell";
 import LeadDrawer from "@/components/LeadDrawer";
 import ConvertLeadDrawer from "@/components/ConvertLeadDrawer";
+import { AttachmentsToggle } from "@/components/Attachments";
 import {
   listLeads,
   updateLeadStatus,
@@ -104,7 +105,8 @@ function LeadsView() {
             </thead>
             <tbody>
               {leads.map((l) => (
-                <tr key={l.id} className="border-t border-[#F0F2F6] align-top">
+                <Fragment key={l.id}>
+                <tr className="border-t border-[#F0F2F6] align-top">
                   <td className="px-5 py-3 font-medium">
                     {leadDisplayName(l)}
                     {l.city && <span className="block text-xs text-[#94A3B8]">{l.city}</span>}
@@ -170,6 +172,12 @@ function LeadsView() {
                     </div>
                   </td>
                 </tr>
+                <tr>
+                  <td colSpan={6} className="px-5 pb-3">
+                    <AttachmentsToggle ownerType="lead" ownerId={l.id} organizationId={l.organization_id} />
+                  </td>
+                </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
