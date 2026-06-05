@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import AppShell from "@/components/AppShell";
-import { listClients, clientDisplayName, fullAddress, type Client } from "@/lib/clients";
+import {
+  listClients,
+  clientDisplayName,
+  fullAddress,
+  entretienStatut,
+  ENTRETIEN_COULEUR,
+  type Client,
+} from "@/lib/clients";
+import { listAllMaintenances } from "@/lib/maintenances";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LMap = any;
 
@@ -33,6 +41,8 @@ function jitter(id: number, salt: number) {
   return ((((id * 9301 + salt * 49297) % 233280) / 233280) - 0.5) * 0.013;
 }
 function posOf(c: Client): [number, number] | null {
+  // Coordonnées GPS réelles si disponibles (géocodage), sinon approximation.
+  if (c.lat != null && c.lng != null) return [c.lat, c.lng];
   const base = fallback(c.postal_code);
   if (!base) return null;
   return [base[0] + jitter(c.id, 3), base[1] + jitter(c.id, 11)];
@@ -40,6 +50,7 @@ function posOf(c: Client): [number, number] | null {
 
 function CarteView() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [lastMaint, setLastMaint] = useState<Record<number, string>>({});
   const [filtre, setFiltre] = useState<"tous" | "b2b" | "b2c">("tous");
   const mapDiv = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LMap>(null);
@@ -48,7 +59,14 @@ function CarteView() {
   const LRef = useRef<any>(null);
 
   const charger = useCallback(async () => {
-    setClients(await listClients());
+    const [cls, maint] = await Promise.all([listClients(), listAllMaintenances()]);
+    setClients(cls);
+    // Dernier entretien par client (le plus récent).
+    const map: Record<number, string> = {};
+    maint.forEach((m) => {
+      if (!map[m.client_id] || m.occurred_at > map[m.client_id]) map[m.client_id] = m.occurred_at;
+    });
+    setLastMaint(map);
   }, []);
   useEffect(() => {
     charger();
@@ -88,29 +106,40 @@ function CarteView() {
         const p = posOf(c);
         if (!p) return;
         pts.push(p);
-        const color = c.segment === "b2b" ? "#1D4ED8" : "#0B7A87";
+        const statut = entretienStatut(lastMaint[c.id] ?? null);
+        const color = ENTRETIEN_COULEUR[statut];
+        const labelStatut =
+          statut === "vert"
+            ? "Entretien à jour"
+            : statut === "orange"
+            ? "Entretien à prévoir (8–12 mois)"
+            : statut === "rouge"
+            ? "Entretien à faire"
+            : "Entretien non suivi";
         const m = L.circleMarker(p, {
-          radius: 7,
+          radius: 8,
           color: "#fff",
           weight: 1.5,
           fillColor: color,
-          fillOpacity: 0.9,
+          fillOpacity: 0.95,
         });
         const addr = fullAddress(c);
         m.bindPopup(
-          `<strong>${clientDisplayName(c)}</strong><br>${addr || ""}<br>` +
+          `<strong>${clientDisplayName(c)}</strong> <span style="color:#94A3B8">(${c.segment.toUpperCase()})</span><br>` +
+            `${addr || ""}<br>` +
+            `<span style="color:${color};font-weight:600">● ${labelStatut}</span><br>` +
             `<a href="${BASE}/clients/?compte=${c.id}" style="color:#0B7A87">Ouvrir la fiche →</a>`
         );
         m.addTo(layer);
       });
     if (pts.length) {
       try {
-        map.fitBounds(pts, { padding: [30, 30], maxZoom: 14 });
+        map.fitBounds(pts, { padding: [30, 30], maxZoom: 15 });
       } catch {
         /* ignore */
       }
     }
-  }, [clients, filtre]);
+  }, [clients, filtre, lastMaint]);
 
   const nb = clients.filter((c) => filtre === "tous" || c.segment === filtre).length;
 
@@ -138,12 +167,15 @@ function CarteView() {
 
       <div className="flex flex-wrap gap-4 text-xs text-[#64748B]">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-full" style={{ background: "#1D4ED8" }} /> B2B
+          <span className="h-3 w-3 rounded-full" style={{ background: "#15803D" }} /> Entretien à jour
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-full" style={{ background: "#0B7A87" }} /> B2C
+          <span className="h-3 w-3 rounded-full" style={{ background: "#F59E0B" }} /> À prévoir (8–12 mois)
         </span>
-        <span className="text-[#94A3B8]">Positions approximées par arrondissement.</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded-full" style={{ background: "#EF4444" }} /> À faire
+        </span>
+        <span className="text-[#94A3B8]">Couleur = état d&apos;entretien · adresse géocodée.</span>
       </div>
 
       <div

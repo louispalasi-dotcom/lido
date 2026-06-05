@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getClient,
   clientDisplayName,
   clientStatusBadge,
   temperatureInfo,
   fullAddress,
+  uploadClientPhoto,
+  clientPhotoUrl,
   type Client,
 } from "@/lib/clients";
 import {
@@ -117,6 +119,8 @@ export default function AccountDetail({
   const [installs, setInstalls] = useState<Installation[]>([]);
   const [oppDrawer, setOppDrawer] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
 
   const charger = useCallback(async () => {
     try {
@@ -147,6 +151,20 @@ export default function AccountDetail({
   useEffect(() => {
     charger();
   }, [charger]);
+
+  useEffect(() => {
+    if (client?.photo_path) {
+      clientPhotoUrl(client.photo_path).then(setPhotoUrl).catch(() => setPhotoUrl(null));
+    } else {
+      setPhotoUrl(null);
+    }
+  }, [client?.photo_path]);
+
+  async function changerPhoto(file: File) {
+    if (!client) return;
+    await uploadClientPhoto(client.organization_id, client.id, file);
+    charger();
+  }
 
   if (loading) return <p className="text-sm text-[#64748B]">Chargement de la fiche…</p>;
   if (error || !client)
@@ -189,8 +207,31 @@ export default function AccountDetail({
       <header className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#0A2540] text-lg font-semibold text-white">
-              {clientDisplayName(client).charAt(0).toUpperCase()}
+            <div className="relative">
+              <input
+                ref={photoRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && changerPhoto(e.target.files[0])}
+              />
+              <button
+                onClick={() => photoRef.current?.click()}
+                title="Changer la photo"
+                className="block h-12 w-12 overflow-hidden rounded-xl bg-[#0A2540]"
+              >
+                {photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-white">
+                    {clientDisplayName(client).charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </button>
+              <span className="pointer-events-none absolute -bottom-1 -right-1 rounded-full bg-white px-1 text-[10px] shadow">
+                📷
+              </span>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-[#0A2540]">{clientDisplayName(client)}</h2>

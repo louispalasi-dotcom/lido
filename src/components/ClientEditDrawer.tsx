@@ -57,10 +57,12 @@ export default function ClientEditDrawer({
   const [estimated, setEstimated] = useState("0");
   const [quote, setQuote] = useState("0");
   const [notes, setNotes] = useState("");
+  const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!client) return;
+    setCoords({ lat: client.lat, lng: client.lng });
     setCompanyName(client.company_name ?? "");
     setSiret(client.siret ?? "");
     setFirstName(client.first_name ?? "");
@@ -106,6 +108,8 @@ export default function ClientEditDrawer({
         estimated_value: Number(estimated) || 0,
         quote_value: Number(quote) || 0,
         notes: notes.trim() || null,
+        lat: coords.lat,
+        lng: coords.lng,
       });
       onSaved();
       onClose();
@@ -183,6 +187,7 @@ export default function ClientEditDrawer({
                 setStreetName(a.street);
                 setPostalCode(a.postal);
                 setCity(a.city);
+                setCoords({ lat: a.lat ?? null, lng: a.lng ?? null });
               }}
             />
             <div className="grid grid-cols-3 gap-3">
